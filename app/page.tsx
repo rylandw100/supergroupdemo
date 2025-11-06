@@ -246,7 +246,7 @@ function hashStr(s: string): number {
 }
 
 /** Map a chip to a deterministic subset of MEMBER_IDS. Employees map to a single id. */
-export function chipToMemberSet(chip: Chip): Set<string> {
+function chipToMemberSet(chip: Chip): Set<string> {
   if (chip.type === "employee") {
     const idx = hashStr(chip.id) % MEMBER_IDS.length;
     return new Set([MEMBER_IDS[idx]]);
@@ -264,7 +264,7 @@ export function chipToMemberSet(chip: Chip): Set<string> {
  *  - For each group (AND chain), intersect the member sets of its chips.
  *  - Sum those intersection sizes across all groups (OR semantics without de-dup across groups).
  */
-export function countMembers(rules: RuleGroup): number {
+function countMembers(rules: RuleGroup): number {
   return rules.reduce((sum, rule) => {
     if (rule.length === 0) return sum;
     let acc = new Set<string>(chipToMemberSet(rule[0]));
@@ -280,7 +280,7 @@ export function countMembers(rules: RuleGroup): number {
 // =============================================================
 // Pure helpers (unit-testable) for editing rules
 // =============================================================
-export function addChipToRulePure(
+function addChipToRulePure(
   prev: RuleGroup,
   chip: Chip,
   target: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number }
@@ -301,7 +301,7 @@ export function addChipToRulePure(
   return draft.map((r, i) => (i === target.groupIdx ? [...r, chip] : r));
 }
 
-export function removeChipPure(prev: RuleGroup, groupIdx: number, chipIdx: number): RuleGroup {
+function removeChipPure(prev: RuleGroup, groupIdx: number, chipIdx: number): RuleGroup {
   const draft = prev.map((r) => [...r]);
   draft[groupIdx] = draft[groupIdx].filter((_, i) => i !== chipIdx);
   return draft.filter((g) => g.length > 0);
