@@ -270,7 +270,7 @@ function countMembers(rules: RuleGroup): number {
     let acc = new Set<string>(chipToMemberSet(rule[0]));
     for (let i = 1; i < rule.length; i++) {
       const next = chipToMemberSet(rule[i]);
-      acc = new Set([...acc].filter((x) => next.has(x)));
+      acc = new Set(Array.from(acc).filter((x) => next.has(x)));
       if (acc.size === 0) break;
     }
     return sum + acc.size;
