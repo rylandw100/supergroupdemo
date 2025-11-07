@@ -757,7 +757,7 @@ const Popover: React.FC<{
               <>
                 {showSuggestions ? (
                   isNewGroup ? (
-                    <Section title="Common filters" emptyText="No suggestions available.">
+                    <Section title="Common filters (AND)" emptyText="No suggestions available.">
                       {contextualSuggestions.map((suggestion, idx) => {
                         const flatIdx = currentIdx++;
                         const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === suggestion.attributeKind);
@@ -803,7 +803,7 @@ const Popover: React.FC<{
                       })()}
                     </Section>
                   ) : (
-                    <Section title="Common filters" emptyText="No suggestions available.">
+                    <Section title="Common filters (AND)" emptyText="No suggestions available.">
                       {contextualSuggestions.map((suggestion, idx) => {
                         const flatIdx = currentIdx++;
                         const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === suggestion.attributeKind);
@@ -850,24 +850,45 @@ const Popover: React.FC<{
                         </button>
                       );
                     })()}
-                  </Section>
+                    </Section>
                 ) : null}
+                {isNewGroup && showSuggestions && (
+                  <div className="border-t border-[rgba(0,0,0,0.1)] my-2"></div>
+                )}
                 <div data-section="attributes">
-                  <Section title="Attributes" emptyText="No attributes.">
-                    {filteredAttributes.map((a, idx) => {
-                      const flatIdx = currentIdx++;
-                      return (
-                        <OptionRow 
-                          key={a.id} 
-                          dataIdx={flatIdx}
-                          label={a.label} 
-                          focused={focusedIdx === flatIdx}
-                          onMouseEnter={() => setFocusedIdx(flatIdx)}
-                          onClick={() => { setSelectedAttr(a); setMode('attr'); }} 
-                        />
-                      );
-                    })}
-                  </Section>
+                  {isNewGroup ? (
+                    <Section title="Add another group (OR)" emptyText="No attributes.">
+                      {filteredAttributes.map((a, idx) => {
+                        const flatIdx = currentIdx++;
+                        return (
+                          <OptionRow 
+                            key={a.id} 
+                            dataIdx={flatIdx}
+                            label={a.label} 
+                            focused={focusedIdx === flatIdx}
+                            onMouseEnter={() => setFocusedIdx(flatIdx)}
+                            onClick={() => { setSelectedAttr(a); setMode('attr'); }} 
+                          />
+                        );
+                      })}
+                    </Section>
+                  ) : (
+                    <Section title="Attributes" emptyText="No attributes.">
+                      {filteredAttributes.map((a, idx) => {
+                        const flatIdx = currentIdx++;
+                        return (
+                          <OptionRow 
+                            key={a.id} 
+                            dataIdx={flatIdx}
+                            label={a.label} 
+                            focused={focusedIdx === flatIdx}
+                            onMouseEnter={() => setFocusedIdx(flatIdx)}
+                            onClick={() => { setSelectedAttr(a); setMode('attr'); }} 
+                          />
+                        );
+                      })}
+                    </Section>
+                  )}
                 </div>
                 <Section title="Employees" emptyText="No employees match your search.">
                   {people.map((p, idx) => {
@@ -1642,7 +1663,7 @@ export default function Home() {
                 {rules.length === 0 ? (
                   <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] whitespace-nowrap">Add member(s)</span>
                 ) : (
-                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">OR</span>
+                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">ADD</span>
                 )}
               </button>
             </div>
