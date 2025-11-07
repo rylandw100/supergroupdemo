@@ -1162,14 +1162,14 @@ const Popover: React.FC<{
 // Compound Rule Pill (with AND between stitched values)
 // =============================================================
 const AndBadge = () => (
-  <div className="h-full border-l border-r border-[rgba(0,0,0,0.1)] px-2 flex items-center">
-    <span className="select-none text-[10px] font-medium leading-[12px] tracking-[0.5px] text-[#6f6f72] opacity-80">AND</span>
+  <div className="self-stretch border-l border-r border-[rgba(0,0,0,0.1)] px-2 flex items-center">
+    <span className="select-none text-[10px] font-medium leading-[12px] tracking-[0.5px] text-[#6f6f72] opacity-80 whitespace-nowrap">AND</span>
   </div>
 );
 
 const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean }> = ({ text, onRemove, isLast = false }) => (
-  <div className={`relative group/seg select-none px-3 py-0 h-full flex items-center ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''}`}>
-    <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022]">{text}</span>
+  <div className={`relative group/seg select-none px-3 py-1 self-stretch flex items-center ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''}`}>
+    <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] break-words">{text}</span>
     {/* close button on the right; appears on hover/focus */}
     <button
       onClick={onRemove}
@@ -1190,7 +1190,7 @@ const RulePill: React.FC<{
 }> = ({ rule, onRemoveAt, onAddAtEnd }) => {
   const plusRef = useRef<HTMLButtonElement>(null);
   return (
-    <div className="flex flex-wrap items-center border px-0" style={{ height: '24px', backgroundColor: '#FAFAFA', borderColor: 'rgba(0,0,0,0.1)', borderRadius: '6px' }}>
+    <div className="flex flex-wrap items-center border px-0" style={{ minHeight: '24px', backgroundColor: '#FAFAFA', borderColor: 'rgba(0,0,0,0.1)', borderRadius: '6px' }}>
       {rule.map((chip, idx) => (
         <React.Fragment key={`${chip.id}-${idx}`}>
           {idx > 0 && <AndBadge />}
@@ -1198,7 +1198,7 @@ const RulePill: React.FC<{
         </React.Fragment>
       ))}
       {/* trailing divider and add button */}
-      <div className="h-full border-l border-[rgba(0,0,0,0.1)] px-1 flex items-center">
+      <div className="self-stretch border-l border-[rgba(0,0,0,0.1)] px-1 flex items-center">
         <button
           ref={plusRef}
           onClick={() => {
