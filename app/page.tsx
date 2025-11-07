@@ -1287,6 +1287,45 @@ function generateRuleDescription(rules: RuleGroup, exceptions: Chip[]): string {
     return "No rules defined";
   }
 
+  // Helper function to format currency
+  function formatCurrency(value: string): string {
+    const num = parseFloat(value.replace(/[^0-9.]/g, ''));
+    if (isNaN(num)) return value;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(num);
+  }
+
+  // Helper function to spell out operator
+  function spellOutOperator(op: string): string {
+    const opMap: Record<string, string> = {
+      '>': 'greater than',
+      '>=': 'greater or equal to',
+      '=': 'equal to',
+      '<=': 'less or equal to',
+      '<': 'less than',
+      'is any of': 'is any of',
+      'is not any of': 'is not any of',
+      'is all of': 'is all of',
+      'before': 'before',
+      'on': 'on',
+      'on or after': 'on or after',
+    };
+    return opMap[op] || op;
+  }
+
+  // Helper function to format list with "or" before last item
+  function formatList(items: string[]): string {
+    if (items.length === 0) return "";
+    if (items.length === 1) return items[0];
+    const last = items[items.length - 1];
+    const rest = items.slice(0, -1);
+    return `${rest.join(", ")}, or ${last}`;
+  }
+
   // Process each group (OR condition)
   const descriptions: string[] = [];
   
@@ -1294,88 +1333,170 @@ function generateRuleDescription(rules: RuleGroup, exceptions: Chip[]): string {
     if (group.length === 0) continue;
     
     // Process chips in the group (AND condition)
-    let department: string | null = null;
-    let level: string | null = null;
-    let location: string | null = null;
-    let team: string | null = null;
+    const departmentValues: string[] = [];
+    const levelValues: string[] = [];
+    const locationValues: string[] = [];
+    const teamValues: string[] = [];
+    const compensationParts: string[] = [];
+    const startDateParts: string[] = [];
     const otherParts: string[] = [];
     
     for (const chip of group) {
       const label = chip.label;
       
-      // Parse common patterns
-      if (label.includes("→")) {
-        const [attr, value] = label.split("→").map(s => s.trim());
-        const attrLower = attr.toLowerCase();
-        
-        // Format based on attribute type
-        if (attrLower.includes("department")) {
-          department = value;
-        } else if (attrLower.includes("work location") || attrLower.includes("location")) {
-          location = value;
-        } else if (attrLower.includes("level")) {
-          level = value;
-        } else if (attrLower.includes("team")) {
-          team = value;
-        } else {
-          // Generic format
-          otherParts.push(`${attr.toLowerCase()} ${value.toLowerCase()}`);
+      // Parse department
+      if (label.includes("Department")) {
+        if (label.includes("→")) {
+          // Single value: "Department → Product Design"
+          const match = label.match(/Department\s*→\s*(.+)/i);
+          if (match) departmentValues.push(match[1].trim());
+        } else if (label.includes("is any of") || label.includes("is not any of") || label.includes("is all of")) {
+          // Multiple values: "Department is any of Product Design, Engineering"
+          const match = label.match(/Department\s+(?:is any of|is not any of|is all of)\s+(.+)/i);
+          if (match) {
+            const values = match[1].split(",").map(v => v.trim());
+            departmentValues.push(...values);
+          }
         }
-      } else if (chip.type === "employee") {
-        // Employee name - extract from label
+      }
+      // Parse location
+      else if (label.includes("Work location") || label.includes("location")) {
+        if (label.includes("→")) {
+          // Single value: "Work location → San Francisco office"
+          const match = label.match(/Work location\s*→\s*(.+)/i);
+          if (match) locationValues.push(match[1].trim());
+        } else if (label.includes("is any of") || label.includes("is not any of") || label.includes("is all of")) {
+          // Multiple values
+          const match = label.match(/Work location\s+(?:is any of|is not any of|is all of)\s+(.+)/i);
+          if (match) {
+            const values = match[1].split(",").map(v => v.trim());
+            locationValues.push(...values);
+          }
+        }
+      }
+      // Parse level
+      else if (label.includes("Level")) {
+        if (label.includes("→")) {
+          // Single value: "Level → Manager"
+          const match = label.match(/Level\s*→\s*(.+)/i);
+          if (match) levelValues.push(match[1].trim());
+        } else if (label.includes("is any of") || label.includes("is not any of") || label.includes("is all of")) {
+          // Multiple values
+          const match = label.match(/Level\s+(?:is any of|is not any of|is all of)\s+(.+)/i);
+          if (match) {
+            const values = match[1].split(",").map(v => v.trim());
+            levelValues.push(...values);
+          }
+        }
+      }
+      // Parse team
+      else if (label.includes("Team")) {
+        if (label.includes("→")) {
+          // Single value: "Team → Engineering"
+          const match = label.match(/Team\s*→\s*(.+)/i);
+          if (match) teamValues.push(match[1].trim());
+        } else if (label.includes("is any of") || label.includes("is not any of") || label.includes("is all of")) {
+          // Multiple values
+          const match = label.match(/Team\s+(?:is any of|is not any of|is all of)\s+(.+)/i);
+          if (match) {
+            const values = match[1].split(",").map(v => v.trim());
+            teamValues.push(...values);
+          }
+        }
+      }
+      // Parse annual compensation
+      else if (label.includes("Annual compensation")) {
+        const match = label.match(/Annual compensation\s+([><=]+)\s+(.+)/i);
+        if (match) {
+          const op = match[1].trim();
+          const value = match[2].trim();
+          const formattedValue = formatCurrency(value);
+          const spelledOp = spellOutOperator(op);
+          compensationParts.push(`have an annual compensation ${spelledOp} ${formattedValue}`);
+        }
+      }
+      // Parse start date
+      else if (label.includes("Start date")) {
+        const match = label.match(/Start date\s+(before|on|on or after)\s+(.+)/i);
+        if (match) {
+          const op = match[1].trim();
+          const value = match[2].trim();
+          startDateParts.push(`have a start date ${op} ${value}`);
+        }
+      }
+      // Parse employee
+      else if (chip.type === "employee") {
         const nameMatch = label.match(/^([^(]+)/);
         if (nameMatch) {
           otherParts.push(nameMatch[1].trim());
         }
-      } else {
-        // Fallback: use label as-is
-        otherParts.push(label.toLowerCase());
+      }
+      // Fallback
+      else {
+        otherParts.push(label);
       }
     }
     
     // Build description for this group
     const groupParts: string[] = [];
     
-    // Combine department and level (e.g., "Engineering" + "Manager" = "engineering managers")
-    if (department && level) {
-      const deptLower = department.toLowerCase();
-      const levelLower = level.toLowerCase();
-      // Combine into a single phrase
-      groupParts.push(`${deptLower} ${levelLower}s`);
-    } else if (department) {
-      // Convert department to job title format
-      const deptLower = department.toLowerCase();
-      if (deptLower.includes("product design")) {
-        groupParts.push("product designers");
-      } else if (deptLower.includes("engineering")) {
-        groupParts.push("engineers");
+    // Format department
+    if (departmentValues.length > 0) {
+      if (departmentValues.length === 1) {
+        groupParts.push(`are in the ${departmentValues[0]} department`);
       } else {
-        groupParts.push(`${deptLower} employees`);
+        const formatted = formatList([...departmentValues]);
+        groupParts.push(`are in the ${formatted} departments`);
       }
-    } else if (level) {
-      groupParts.push(level.toLowerCase());
     }
     
-    // Add location
-    if (location) {
-      groupParts.push(`in the ${location}`);
+    // Format location
+    if (locationValues.length > 0) {
+      if (locationValues.length === 1) {
+        groupParts.push(`are in ${locationValues[0]}`);
+      } else {
+        const formatted = formatList([...locationValues]);
+        groupParts.push(`are in ${formatted}`);
+      }
     }
     
-    // Add team
-    if (team) {
-      groupParts.push(`on the ${team} team`);
+    // Format level
+    if (levelValues.length > 0) {
+      if (levelValues.length === 1) {
+        groupParts.push(`are ${levelValues[0]}s`);
+      } else {
+        const formatted = formatList(levelValues.map(v => `${v}s`));
+        groupParts.push(`are ${formatted}`);
+      }
     }
+    
+    // Format team
+    if (teamValues.length > 0) {
+      if (teamValues.length === 1) {
+        groupParts.push(`are on the ${teamValues[0]} team`);
+      } else {
+        const formatted = formatList([...teamValues]);
+        groupParts.push(`are on the ${formatted} teams`);
+      }
+    }
+    
+    // Add compensation
+    groupParts.push(...compensationParts);
+    
+    // Add start date
+    groupParts.push(...startDateParts);
     
     // Add other parts
     groupParts.push(...otherParts);
     
-    // Join AND conditions
+    // Join AND conditions with "and"
     if (groupParts.length > 0) {
       if (groupParts.length === 1) {
         descriptions.push(groupParts[0]);
       } else {
-        // Combine multiple AND conditions with commas
-        descriptions.push(groupParts.join(", "));
+        // Combine multiple AND conditions with "and"
+        const last = groupParts.pop();
+        descriptions.push(`${groupParts.join(", ")}, and ${last}`);
       }
     }
   }
