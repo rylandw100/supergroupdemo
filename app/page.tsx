@@ -771,7 +771,7 @@ const Popover: React.FC<{
         <div ref={listScrollRef} className="max-h-80 overflow-auto p-2">
           {(() => {
             const q = query.trim().toLowerCase();
-            const showSuggestions = contextualSuggestions.length > 0 && !q;
+            const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null;
             const filteredAttributes = q 
               ? ATTRIBUTE_DEFINITIONS.filter(a => a.label.toLowerCase().includes(q))
               : ATTRIBUTE_DEFINITIONS;
@@ -1642,7 +1642,7 @@ export default function Home() {
           </div>
           
           <div className="p-6">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" style={rules.length === 0 ? { paddingBottom: '32px' } : undefined}>
             {rules.map((group, groupIdx) => (
               <div key={groupIdx}>
                 <RulePill
