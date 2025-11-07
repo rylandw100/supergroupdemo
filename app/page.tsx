@@ -408,7 +408,32 @@ const Popover: React.FC<{
   const [focusedOperatorIdx, setFocusedOperatorIdx] = useState(0);
   const [focusedValueIdx, setFocusedValueIdx] = useState(0);
 
-  const all = useMemo(() => [...VARIABLE_OPTIONS, ...EMPLOYEE_OPTIONS], []);
+  // Generate variable options from multiselect attribute values
+  const multiselectVariables = useMemo(() => {
+    const deptVars = DEPARTMENT_VALUES.map((val, idx) => ({
+      id: `var-dept-${idx}`,
+      label: `Department → ${val}`,
+      type: "variable" as const,
+    }));
+    const locationVars = LOCATION_VALUES.map((val, idx) => ({
+      id: `var-location-${idx}`,
+      label: `Work location → ${val}`,
+      type: "variable" as const,
+    }));
+    const levelVars = LEVEL_VALUES.map((val, idx) => ({
+      id: `var-level-${idx}`,
+      label: `Level → ${val}`,
+      type: "variable" as const,
+    }));
+    const teamVars = TEAM_VALUES.map((val, idx) => ({
+      id: `var-team-${idx}`,
+      label: `Team → ${val}`,
+      type: "variable" as const,
+    }));
+    return [...deptVars, ...locationVars, ...levelVars, ...teamVars];
+  }, []);
+
+  const all = useMemo(() => [...VARIABLE_OPTIONS, ...multiselectVariables, ...EMPLOYEE_OPTIONS], [multiselectVariables]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return all;
@@ -780,27 +805,6 @@ const Popover: React.FC<{
                           />
                         );
                       })}
-                      {(() => {
-                        const flatIdx = currentIdx++;
-                        return (
-                          <button
-                            data-idx={flatIdx}
-                            onClick={() => {
-                              const attrSection = containerRef.current?.querySelector('[data-section="attributes"]');
-                              if (attrSection) {
-                                attrSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                              }
-                            }}
-                            onMouseEnter={() => setFocusedIdx(flatIdx)}
-                            className={`flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60 ${focusedIdx === flatIdx ? "bg-muted/70 ring-1 ring-black/10" : ""}`}
-                          >
-                            <span className="line-clamp-1">AND Other</span>
-                            {focusedIdx === flatIdx ? (
-                              <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-                            ) : null}
-                          </button>
-                        );
-                      })()}
                     </Section>
                   ) : (
                     <Section title="Common filters (AND)" emptyText="No suggestions available.">
