@@ -502,7 +502,7 @@ const Popover: React.FC<{
     setLevelValues([]);
     setTeamValues([]);
     setAddingToPreviousGroup(false);
-    setSaveAndAddAnother(false);
+    // Don't reset saveAndAddAnother - keep it persistent across sessions
     onClose();
   }
 
@@ -543,7 +543,7 @@ const Popover: React.FC<{
       setLevelValues([]);
       setTeamValues([]);
       setAddingToPreviousGroup(false);
-      setSaveAndAddAnother(false);
+      // Keep saveAndAddAnother checked for next session
       // Don't call onClose() - let parent handle opening new popover
     } else {
       resetAndClose();
@@ -904,8 +904,9 @@ const Popover: React.FC<{
           })()}
         </div>
       ) : (
-        <div ref={attrScrollRef} className="max-h-80 overflow-auto p-3">
-          {/* Attribute forms */}
+        <div className="flex flex-col max-h-80">
+          <div ref={attrScrollRef} className="flex-1 overflow-auto p-3">
+            {/* Attribute forms */}
           {selectedAttr?.kind === 'department' && (
             <div className="space-y-3">
               <label className="block text-xs font-medium text-muted-foreground">Operator</label>
@@ -941,19 +942,6 @@ const Popover: React.FC<{
                     ) : null}
                   </label>
                 ))}
-              </div>
-              <div className="flex justify-end gap-2 border-t pt-2 mt-2">
-                <button 
-                  onClick={handleSaveAttribute} 
-                  disabled={!isFormValid}
-                  className={`rounded-lg px-3 py-1.5 text-sm text-white ${
-                    isFormValid 
-                      ? "bg-black hover:bg-black/90" 
-                      : "bg-gray-300 cursor-not-allowed"
-                  }`}
-                >
-                  Add
-                </button>
               </div>
             </div>
           )}
@@ -1137,8 +1125,9 @@ const Popover: React.FC<{
             </div>
           )}
 
-          {/* Footer actions */}
-          <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
+          </div>
+          {/* Footer actions - outside scrollable area */}
+          <div className="flex items-center justify-between gap-2 border-t pt-3 px-3 pb-3 bg-white">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
