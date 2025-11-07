@@ -831,7 +831,7 @@ const Popover: React.FC<{
                       })}
                     </Section>
                   )
-                ) : !q ? (
+                ) : !q && !(isNewGroup && lastChip === null) ? (
                   <Section title="Operators" emptyText="No operators available.">
                     {(() => {
                       const flatIdx = currentIdx++;
@@ -861,7 +861,7 @@ const Popover: React.FC<{
                 )}
                 <div data-section="attributes">
                   {isNewGroup ? (
-                    <Section title="Add another group (OR)" emptyText="No attributes.">
+                    <Section title={!q && lastChip === null ? "Add a group" : "Add another group (OR)"} emptyText="No attributes.">
                       {filteredAttributes.map((a, idx) => {
                         const flatIdx = currentIdx++;
                         return (
