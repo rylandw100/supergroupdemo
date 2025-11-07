@@ -370,7 +370,7 @@ const Popover: React.FC<{
   open: boolean;
   anchorRect: DOMRect | null;
   onClose: () => void;
-  onSelect: (chip: Chip, usePreviousGroup?: boolean) => void;
+  onSelect: (chip: Chip, usePreviousGroup?: boolean, saveAndAddAnother?: boolean) => void;
   lastChip?: Chip | null;
   isNewGroup?: boolean;
   currentRule?: Rule;
@@ -399,6 +399,7 @@ const Popover: React.FC<{
 
   const [teamOperator, setTeamOperator] = useState<'is any of' | 'is not any of' | 'is all of'>('is any of');
   const [teamValues, setTeamValues] = useState<string[]>([]);
+  const [saveAndAddAnother, setSaveAndAddAnother] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const listScrollRef = useRef<HTMLDivElement>(null);
@@ -501,6 +502,7 @@ const Popover: React.FC<{
     setLevelValues([]);
     setTeamValues([]);
     setAddingToPreviousGroup(false);
+    setSaveAndAddAnother(false);
     onClose();
   }
 
@@ -528,9 +530,24 @@ const Popover: React.FC<{
     const chip = { id: `attr-${selectedAttr.kind}-${Date.now()}`, label, type: 'variable' as const };
     
     // If we're adding from "Add another group" and clicked a common filter, add to previous group
-    onSelect(chip, addingToPreviousGroup);
+    onSelect(chip, addingToPreviousGroup, saveAndAddAnother);
     
-    resetAndClose();
+    if (saveAndAddAnother) {
+      // Reset form but keep popover open - parent will handle opening new popover
+      setMode('list');
+      setSelectedAttr(null);
+      setDeptValues([]);
+      setCompValue("");
+      setDateValue("");
+      setLocationValues([]);
+      setLevelValues([]);
+      setTeamValues([]);
+      setAddingToPreviousGroup(false);
+      setSaveAndAddAnother(false);
+      // Don't call onClose() - let parent handle opening new popover
+    } else {
+      resetAndClose();
+    }
   }
 
   React.useEffect(() => {
@@ -1039,19 +1056,6 @@ const Popover: React.FC<{
                   </label>
                 ))}
               </div>
-              <div className="flex justify-end gap-2 border-t pt-2 mt-2">
-                <button 
-                  onClick={handleSaveAttribute} 
-                  disabled={!isFormValid}
-                  className={`rounded-lg px-3 py-1.5 text-sm text-white ${
-                    isFormValid 
-                      ? "bg-black hover:bg-black/90" 
-                      : "bg-gray-300 cursor-not-allowed"
-                  }`}
-                >
-                  Add
-                </button>
-              </div>
             </div>
           )}
 
@@ -1090,19 +1094,6 @@ const Popover: React.FC<{
                     ) : null}
                   </label>
                 ))}
-              </div>
-              <div className="flex justify-end gap-2 border-t pt-2 mt-2">
-                <button 
-                  onClick={handleSaveAttribute} 
-                  disabled={!isFormValid}
-                  className={`rounded-lg px-3 py-1.5 text-sm text-white ${
-                    isFormValid 
-                      ? "bg-black hover:bg-black/90" 
-                      : "bg-gray-300 cursor-not-allowed"
-                  }`}
-                >
-                  Add
-                </button>
               </div>
             </div>
           )}
@@ -1143,36 +1134,34 @@ const Popover: React.FC<{
                   </label>
                 ))}
               </div>
-              <div className="flex justify-end gap-2 border-t pt-2 mt-2">
-                <button 
-                  onClick={handleSaveAttribute} 
-                  disabled={!isFormValid}
-                  className={`rounded-lg px-3 py-1.5 text-sm text-white ${
-                    isFormValid 
-                      ? "bg-black hover:bg-black/90" 
-                      : "bg-gray-300 cursor-not-allowed"
-                  }`}
-                >
-                  Add
-                </button>
-              </div>
             </div>
           )}
 
           {/* Footer actions */}
-          <div className="mt-4 flex items-center justify-end gap-2 border-t pt-3">
-            <button onClick={resetAndClose} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted/60">Cancel</button>
-            <button 
-              onClick={handleSaveAttribute} 
-              disabled={!isFormValid}
-              className={`rounded-lg px-3 py-1.5 text-sm text-white ${
-                isFormValid 
-                  ? "bg-black hover:bg-black/90" 
-                  : "bg-gray-300 cursor-not-allowed"
-              }`}
-            >
-              Save condition
-            </button>
+          <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={saveAndAddAnother}
+                onChange={(e) => setSaveAndAddAnother(e.target.checked)}
+                className="cursor-pointer"
+              />
+              <span className="text-sm text-[#202022]">Save and add another</span>
+            </label>
+            <div className="flex items-center gap-2" style={{ marginLeft: '18px' }}>
+              <button onClick={resetAndClose} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted/60">Cancel</button>
+              <button 
+                onClick={handleSaveAttribute} 
+                disabled={!isFormValid}
+                className={`rounded-lg px-3 py-1.5 text-sm text-white ${
+                  isFormValid 
+                    ? "bg-black hover:bg-black/90" 
+                    : "bg-gray-300 cursor-not-allowed"
+                }`}
+              >
+                Save
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1531,6 +1520,7 @@ export default function Home() {
   const [kebabMenuRect, setKebabMenuRect] = useState<DOMRect | null>(null);
   const [temporalityPopoverOpen, setTemporalityPopoverOpen] = useState(false);
   const [temporalityPopoverRect, setTemporalityPopoverRect] = useState<DOMRect | null>(null);
+  const [shouldOpenAddAnother, setShouldOpenAddAnother] = useState(false);
 
   const openPopover = (rect: DOMRect, target: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number }) => {
     // Check if we're adding a new group (target.groupIdx === rules.length)
@@ -1595,6 +1585,19 @@ export default function Home() {
     closePopover();
   };
 
+  // Watch for "save and add another" flag and open new popover after rules update
+  React.useEffect(() => {
+    if (shouldOpenAddAnother && !popover.open) {
+      // Find the "add another group" button and open popover
+      const addAnotherButton = document.querySelector('[data-add-another-group]') as HTMLElement;
+      if (addAnotherButton) {
+        const rect = addAnotherButton.getBoundingClientRect();
+        openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+        setShouldOpenAddAnother(false);
+      }
+    }
+  }, [shouldOpenAddAnother, popover.open, rules.length]);
+
   const removeException = (chipId: string) => {
     setExceptions((prev) => prev.filter((c) => c.id !== chipId));
   };
@@ -1649,6 +1652,7 @@ export default function Home() {
               </div>
             ))}
             <button
+              data-add-another-group
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
                 openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
@@ -1729,7 +1733,7 @@ export default function Home() {
         open={popover.open}
         anchorRect={popover.rect}
         onClose={closePopover}
-        onSelect={(chip, usePreviousGroup) => {
+        onSelect={(chip, usePreviousGroup, saveAndAddAnother) => {
           if (popover.isException) {
             addException(chip);
           } else if (usePreviousGroup && popover.currentRule) {
@@ -1738,6 +1742,14 @@ export default function Home() {
             addChipToRule(chip, { groupIdx: prevGroupIdx, insertAtEnd: true });
           } else if (popover.target) {
             addChipToRule(chip, popover.target);
+          }
+          
+          // If "save and add another" is checked, set flag to open new popover after state updates
+          if (saveAndAddAnother && popover.rect) {
+            // Close current popover first
+            closePopover();
+            // Set flag to open new popover after rules state updates
+            setShouldOpenAddAnother(true);
           }
         }}
         lastChip={lastChip}
