@@ -1512,6 +1512,39 @@ function generateRuleDescription(rules: RuleGroup, exceptions: Chip[]): string {
     description = `${descriptions.join(", ")}, or ${last}`;
   }
   
+  // Simplify description to avoid repeating "in" or "are"
+  // Pattern: "are in the X department, are in the Y department" → "are in the X department, the Y department"
+  description = description.replace(/, are in the ([^,]+) department/g, (match, dept, offset, full) => {
+    // Check if preceded by "are in the ... department"
+    const before = full.substring(0, offset);
+    if (before.match(/are in the .+ department$/)) {
+      return `, the ${dept} department`;
+    }
+    return match;
+  });
+  
+  // Pattern: "are in X, are in Y" → "are in X, Y"
+  description = description.replace(/, are in ([^,]+)(?=,|$| and| or)/g, (match, location, offset, full) => {
+    // Check if preceded by "are in ..."
+    const before = full.substring(0, offset);
+    if (before.match(/are in [^,]+$/)) {
+      return `, ${location}`;
+    }
+    return match;
+  });
+  
+  // Pattern: "are X, are Y" (but not "are on the X team") → "are X, Y"
+  description = description.replace(/, are ([^,]+)(?=,|$| and| or)/g, (match, value, offset, full) => {
+    // Skip if it's "are on the ... team"
+    if (value.includes("on the")) return match;
+    // Check if preceded by "are ..." (not "are on the")
+    const before = full.substring(0, offset);
+    if (before.match(/are [^,]+$/) && !before.match(/are on the/)) {
+      return `, ${value}`;
+    }
+    return match;
+  });
+  
   // Add exceptions
   if (exceptions.length > 0) {
     const exceptionNames = exceptions.map(e => {
@@ -1851,7 +1884,7 @@ export default function Home() {
                   );
                   const description = generateRuleDescription(rules, exceptions);
                   if (hasAttributesOrVariables) {
-                    return <>Active or recently hired employees who are {description}.</>;
+                    return <>Active or recently hired employees who {description}.</>;
                   }
                   return <>{description}.</>;
                 })()}
