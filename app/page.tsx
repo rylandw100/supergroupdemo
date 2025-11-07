@@ -445,20 +445,21 @@ const Popover: React.FC<{
   const variables = useMemo(() => filtered.filter((f) => f.type === "variable"), [filtered]);
   const people = useMemo(() => filtered.filter((f) => f.type === "employee"), [filtered]);
 
-  // Build flat list of all options in order: Common filters → Attributes → Employees → Variables
+  // Build flat list of all options in order matching the rendered UI: Common filters → Operators → Attributes → Employees → Variables
   const flatList = useMemo(() => {
     const list: Array<{ type: 'suggestion' | 'attribute' | 'employee' | 'variable'; data: any; label: string }> = [];
     const q = query.trim().toLowerCase();
+    const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null;
     
-    // Add common filters (suggestions) - only show when there's no query
-    if (contextualSuggestions.length > 0 && !q) {
+    // Add common filters (suggestions) - only show when there's no query and lastChip exists
+    if (showSuggestions) {
       contextualSuggestions.forEach(s => {
         list.push({ type: 'suggestion', data: s, label: s.label });
       });
     }
     
-    // Add "AND Other" button if in new group mode - only show when there's no query
-    if (isNewGroup && contextualSuggestions.length > 0 && !q) {
+    // Add "AND Other" button (Operators section) - only show when there's no query and suggestions are not shown and not in empty add members popover
+    if (!q && !(isNewGroup && lastChip === null) && !showSuggestions) {
       list.push({ type: 'suggestion', data: { isOther: true }, label: 'AND Other' });
     }
     
@@ -481,7 +482,23 @@ const Popover: React.FC<{
     });
     
     return list;
-  }, [contextualSuggestions, isNewGroup, people, variables, query]);
+  }, [contextualSuggestions, isNewGroup, people, variables, query, lastChip]);
+
+  // Reset popover state when it opens
+  React.useEffect(() => {
+    if (open) {
+      setMode('list');
+      setSelectedAttr(null);
+      setQuery("");
+      setDeptValues([]);
+      setLocationValues([]);
+      setLevelValues([]);
+      setTeamValues([]);
+      setCompValue("");
+      setDateValue("");
+      setAddingToPreviousGroup(false);
+    }
+  }, [open]);
 
   // Reset focus when list changes
   React.useEffect(() => {
