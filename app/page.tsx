@@ -1628,22 +1628,24 @@ export default function Home() {
                 />
               </div>
             ))}
-            <button
-              data-add-another-group
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
-              }}
-              className="group relative inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-all overflow-hidden" 
-              style={{ height: '24px', borderRadius: '6px', border: '1px dashed rgba(0,0,0,0.2)' }}
-            >
-              <UserPlus className="h-3 w-3 text-[#202022] shrink-0" /> 
-              {rules.length === 0 ? (
-                <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] whitespace-nowrap">Add member(s)</span>
-              ) : (
-                <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">OR</span>
-              )}
-            </button>
+            <div className="flex-shrink-0" style={{ minWidth: '70px' }}>
+              <button
+                data-add-another-group
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                  openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                }}
+                className="group relative inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-all overflow-hidden" 
+                style={{ height: '24px', borderRadius: '6px', border: '1px dashed rgba(0,0,0,0.2)' }}
+              >
+                <UserPlus className="h-3 w-3 text-[#202022] shrink-0" /> 
+                {rules.length === 0 ? (
+                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] whitespace-nowrap">Add member(s)</span>
+                ) : (
+                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">OR</span>
+                )}
+              </button>
+            </div>
           </div>
 
           {rules.length > 0 && (
