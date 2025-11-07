@@ -937,9 +937,6 @@ const Popover: React.FC<{
                       }}
                     />
                     <span className="flex-1">{d}</span>
-                    {focusedValueIdx === idx ? (
-                      <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-                    ) : null}
                   </label>
                 ))}
               </div>
@@ -1038,9 +1035,6 @@ const Popover: React.FC<{
                       }}
                     />
                     <span className="flex-1">{l}</span>
-                    {focusedValueIdx === idx ? (
-                      <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-                    ) : null}
                   </label>
                 ))}
               </div>
@@ -1077,9 +1071,6 @@ const Popover: React.FC<{
                       }}
                     />
                     <span className="flex-1">{l}</span>
-                    {focusedValueIdx === idx ? (
-                      <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-                    ) : null}
                   </label>
                 ))}
               </div>
@@ -1116,9 +1107,6 @@ const Popover: React.FC<{
                       }}
                     />
                     <span className="flex-1">{t}</span>
-                    {focusedValueIdx === idx ? (
-                      <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-                    ) : null}
                   </label>
                 ))}
               </div>
@@ -1162,13 +1150,13 @@ const Popover: React.FC<{
 // Compound Rule Pill (with AND between stitched values)
 // =============================================================
 const AndBadge = () => (
-  <div className="self-stretch border-l border-r border-[rgba(0,0,0,0.1)] px-2 flex items-center">
+  <div className="self-stretch border-l border-r border-t border-[rgba(0,0,0,0.1)] px-2 flex items-center" style={{ marginTop: '-1px', marginLeft: '-1px' }}>
     <span className="select-none text-[10px] font-medium leading-[12px] tracking-[0.5px] text-[#6f6f72] opacity-80 whitespace-nowrap">AND</span>
   </div>
 );
 
-const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean }> = ({ text, onRemove, isLast = false }) => (
-  <div className={`relative group/seg select-none px-3 py-1 self-stretch flex items-center ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''}`}>
+const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean; isFirst?: boolean }> = ({ text, onRemove, isLast = false, isFirst = false }) => (
+  <div className={`relative group/seg select-none px-3 py-1 self-stretch flex items-center ${!isFirst ? 'border-t border-[rgba(0,0,0,0.1)]' : ''} ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''}`} style={!isFirst ? { marginTop: '-1px', marginLeft: '-1px' } : { marginLeft: '-1px' }}>
     <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] break-words">{text}</span>
     {/* close button on the right; appears on hover/focus */}
     <button
@@ -1194,11 +1182,11 @@ const RulePill: React.FC<{
       {rule.map((chip, idx) => (
         <React.Fragment key={`${chip.id}-${idx}`}>
           {idx > 0 && <AndBadge />}
-          <LabelSegment text={chip.label} onRemove={() => onRemoveAt(idx)} isLast={idx === rule.length - 1} />
+          <LabelSegment text={chip.label} onRemove={() => onRemoveAt(idx)} isLast={idx === rule.length - 1} isFirst={idx === 0} />
         </React.Fragment>
       ))}
       {/* trailing divider and add button */}
-      <div className="self-stretch border-l border-[rgba(0,0,0,0.1)] px-1 flex items-center">
+      <div className="self-stretch border-l border-t border-[rgba(0,0,0,0.1)] px-1 flex items-center" style={{ marginTop: '-1px', marginLeft: '-1px' }}>
         <button
           ref={plusRef}
           onClick={() => {
