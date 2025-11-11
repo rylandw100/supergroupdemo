@@ -770,7 +770,7 @@ const Popover: React.FC<{
 
   return (
     <div style={style} ref={containerRef} className="rounded-2xl border bg-white shadow-xl">
-      {!hideSearchBar && (
+      {(!hideSearchBar || mode === 'attr') && (
         <div className="flex items-center gap-2 border-b p-3">
           {mode === 'attr' ? (
             <button onClick={() => setMode('list')} className="mr-1 rounded p-1 hover:bg-muted" title="Back">
@@ -780,13 +780,15 @@ const Popover: React.FC<{
             <Search className="h-4 w-4 opacity-60" />
           )}
           {mode === 'list' ? (
-            <input
-              autoFocus
-              value={effectiveQuery}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search users, variables, attributes"
-              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
+            !hideSearchBar ? (
+              <input
+                autoFocus
+                value={effectiveQuery}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search users, variables, attributes"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+            ) : null
           ) : (
             <div className="text-sm font-medium">{selectedAttr?.label} condition</div>
           )}
