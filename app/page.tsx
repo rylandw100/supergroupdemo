@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useState } from "react";
 import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // =============================================================
 // Mock Data
@@ -375,8 +376,14 @@ const Popover: React.FC<{
   isNewGroup?: boolean;
   currentRule?: Rule;
   previousGroupIdx?: number;
-}> = ({ open, anchorRect, onClose, onSelect, lastChip, isNewGroup = false, currentRule = [], previousGroupIdx }) => {
+  externalQuery?: string;
+  hideSearchBar?: boolean;
+  isOption2?: boolean;
+  isException?: boolean;
+  exceptionsLength?: number;
+}> = ({ open, anchorRect, onClose, onSelect, lastChip, isNewGroup = false, currentRule = [], previousGroupIdx, externalQuery, hideSearchBar = false, isOption2 = false, isException = false, exceptionsLength = 0 }) => {
   const [query, setQuery] = useState("");
+  const effectiveQuery = externalQuery !== undefined ? externalQuery : query;
   const [mode, setMode] = useState<'list' | 'attr'>('list');
   const [selectedAttr, setSelectedAttr] = useState<typeof ATTRIBUTE_DEFINITIONS[number] | null>(null);
   const [addingToPreviousGroup, setAddingToPreviousGroup] = useState(false);
@@ -435,10 +442,10 @@ const Popover: React.FC<{
 
   const all = useMemo(() => [...VARIABLE_OPTIONS, ...multiselectVariables, ...EMPLOYEE_OPTIONS], [multiselectVariables]);
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = effectiveQuery.trim().toLowerCase();
     if (!q) return all;
     return all.filter((o) => o.label.toLowerCase().includes(q));
-  }, [all, query]);
+  }, [all, effectiveQuery]);
 
   const contextualSuggestions = useMemo(() => getContextualSuggestions(lastChip || null, currentRule), [lastChip, currentRule]);
 
@@ -448,8 +455,9 @@ const Popover: React.FC<{
   // Build flat list of all options in order matching the rendered UI: Common filters → Operators → Attributes → Employees → Variables
   const flatList = useMemo(() => {
     const list: Array<{ type: 'suggestion' | 'attribute' | 'employee' | 'variable'; data: any; label: string }> = [];
-    const q = query.trim().toLowerCase();
-    const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null;
+    const q = effectiveQuery.trim().toLowerCase();
+    // For exceptions in Option 1, hide suggestions when exceptions are empty
+    const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null && !(isException && !isOption2 && exceptionsLength === 0);
     
     // Add common filters (suggestions) - only show when there's no query and lastChip exists
     if (showSuggestions) {
@@ -482,7 +490,7 @@ const Popover: React.FC<{
     });
     
     return list;
-  }, [contextualSuggestions, isNewGroup, people, variables, query, lastChip]);
+  }, [contextualSuggestions, isNewGroup, people, variables, effectiveQuery, lastChip, isException, isOption2, exceptionsLength]);
 
   // Reset popover state when it opens
   React.useEffect(() => {
@@ -571,10 +579,13 @@ const Popover: React.FC<{
     
     const chip = { id: `attr-${selectedAttr.kind}-${Date.now()}`, label, type: 'variable' as const };
     
-    // If we're adding from "Add another group" and clicked a common filter, add to previous group
-    onSelect(chip, addingToPreviousGroup, saveAndAddAnother);
+    // In Option 2, always behave as if saveAndAddAnother is true
+    const shouldSaveAndAddAnother = isOption2 || saveAndAddAnother;
     
-    if (saveAndAddAnother) {
+    // If we're adding from "Add another group" and clicked a common filter, add to previous group
+    onSelect(chip, addingToPreviousGroup, shouldSaveAndAddAnother);
+    
+    if (shouldSaveAndAddAnother) {
       // Reset form but keep popover open - parent will handle opening new popover
       setMode('list');
       setSelectedAttr(null);
@@ -762,32 +773,34 @@ const Popover: React.FC<{
 
   return (
     <div style={style} ref={containerRef} className="rounded-2xl border bg-white shadow-xl">
-      <div className="flex items-center gap-2 border-b p-3">
-        {mode === 'attr' ? (
-          <button onClick={() => setMode('list')} className="mr-1 rounded p-1 hover:bg-muted" title="Back">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-        ) : (
-          <Search className="h-4 w-4 opacity-60" />
-        )}
-        {mode === 'list' ? (
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users, variables, attributes"
-            className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-        ) : (
-          <div className="text-sm font-medium">{selectedAttr?.label} condition</div>
-        )}
-      </div>
+      {!hideSearchBar && (
+        <div className="flex items-center gap-2 border-b p-3">
+          {mode === 'attr' ? (
+            <button onClick={() => setMode('list')} className="mr-1 rounded p-1 hover:bg-muted" title="Back">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          ) : (
+            <Search className="h-4 w-4 opacity-60" />
+          )}
+          {mode === 'list' ? (
+            <input
+              autoFocus
+              value={effectiveQuery}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search users, variables, attributes"
+              className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          ) : (
+            <div className="text-sm font-medium">{selectedAttr?.label} condition</div>
+          )}
+        </div>
+      )}
 
       {/* Body */}
       {mode === 'list' ? (
         <div ref={listScrollRef} className="max-h-80 overflow-auto p-2">
           {(() => {
-            const q = query.trim().toLowerCase();
+            const q = effectiveQuery.trim().toLowerCase();
             const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null;
             const filteredAttributes = q 
               ? ATTRIBUTE_DEFINITIONS.filter(a => a.label.toLowerCase().includes(q))
@@ -878,7 +891,7 @@ const Popover: React.FC<{
                 )}
                 <div data-section="attributes">
                   {isNewGroup ? (
-                    <Section title={!q && lastChip === null ? "Add a group" : "Add another group (OR)"} emptyText="No attributes.">
+                    <Section title={(!q && lastChip === null) || (isException && !isOption2 && exceptionsLength === 0) ? "Add a group" : "Add another group (OR)"} emptyText="No attributes.">
                       {filteredAttributes.map((a, idx) => {
                         const flatIdx = currentIdx++;
                         return (
@@ -1158,15 +1171,18 @@ const Popover: React.FC<{
           </div>
           {/* Footer actions - outside scrollable area */}
           <div className="flex items-center justify-between gap-2 border-t pt-3 px-3 pb-3 bg-white">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={saveAndAddAnother}
-                onChange={(e) => setSaveAndAddAnother(e.target.checked)}
-                className="cursor-pointer"
-              />
-              <span className="text-sm text-[#202022]">Save and add another</span>
-            </label>
+            {!isOption2 && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={saveAndAddAnother}
+                  onChange={(e) => setSaveAndAddAnother(e.target.checked)}
+                  className="cursor-pointer"
+                />
+                <span className="text-sm text-[#202022]">Save and add another</span>
+              </label>
+            )}
+            {isOption2 && <div />}
             <div className="flex items-center gap-2" style={{ marginLeft: '18px' }}>
               <button onClick={resetAndClose} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted/60">Cancel</button>
               <button 
@@ -1217,35 +1233,101 @@ const RulePill: React.FC<{
   groupIdx: number;
   onRemoveAt: (chipIdx: number) => void;
   onAddAtEnd: (anchor: DOMRect) => void;
-}> = ({ rule, onRemoveAt, onAddAtEnd }) => {
+  onAddAfterChip?: (anchor: DOMRect, chipIdx: number) => void;
+  isOption2?: boolean;
+  chipEditState?: { groupIdx: number; chipIdx: number; query: string; isException: boolean } | null;
+  onChipEditChange?: (query: string) => void;
+  onChipEditBlur?: () => void;
+  onChipEditKeyDown?: (e: React.KeyboardEvent) => void;
+  getChipEditInputRef?: (key: string) => (el: HTMLInputElement | null) => void;
+}> = ({ rule, groupIdx, onRemoveAt, onAddAtEnd, onAddAfterChip, isOption2 = false, chipEditState, onChipEditChange, onChipEditBlur, onChipEditKeyDown, getChipEditInputRef }) => {
   const plusRef = useRef<HTMLButtonElement>(null);
+  const isEditingThisChip = chipEditState?.groupIdx === groupIdx && chipEditState?.chipIdx === rule.length;
+  
   return (
     <div className="flex flex-wrap items-start border px-0" style={{ minHeight: '24px', backgroundColor: '#FAFAFA', borderColor: 'rgba(0,0,0,0.1)', borderRadius: '6px' }}>
-      {rule.map((chip, idx) => (
-        <React.Fragment key={`${chip.id}-${idx}`}>
-          {idx > 0 && <AndBadge />}
-          <LabelSegment text={chip.label} onRemove={() => onRemoveAt(idx)} isLast={idx === rule.length - 1} isFirst={idx === 0} />
-        </React.Fragment>
-      ))}
+      {rule.map((chip, idx) => {
+        const isEditingThis = isOption2 && chipEditState?.groupIdx === groupIdx && chipEditState?.chipIdx === idx;
+        const inputKey = `${groupIdx}-${idx}`;
+        return (
+          <React.Fragment key={`${chip.id}-${idx}`}>
+            {idx > 0 && <AndBadge />}
+            <LabelSegment text={chip.label} onRemove={() => onRemoveAt(idx)} isLast={idx === rule.length - 1 && !isEditingThis} isFirst={idx === 0} />
+            {/* Inline input after this chip if editing in Option 2 */}
+            {isEditingThis && (
+              <>
+                <AndBadge />
+                <div className="relative group/seg select-none px-3 py-1 self-stretch flex items-center shrink-0 border-t border-r border-[rgba(0,0,0,0.1)]" style={{ marginTop: '-1px', marginLeft: '-1px' }}>
+                  <input
+                    ref={getChipEditInputRef?.(inputKey)}
+                    value={chipEditState.query}
+                    onChange={(e) => onChipEditChange?.(e.target.value)}
+                    onBlur={onChipEditBlur}
+                    onKeyDown={onChipEditKeyDown}
+                    placeholder="Search users, variables, attributes"
+                    className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] outline-none bg-transparent w-full placeholder:text-muted-foreground"
+                    style={{ minWidth: '200px' }}
+                    autoFocus
+                  />
+                </div>
+              </>
+            )}
+          </React.Fragment>
+        );
+      })}
+      {/* Inline input after last chip if editing at end in Option 2 */}
+      {isOption2 && isEditingThisChip && (
+        <>
+          <AndBadge />
+          <div className="relative group/seg select-none px-3 py-1 self-stretch flex items-center shrink-0 border-t border-r border-[rgba(0,0,0,0.1)]" style={{ marginTop: '-1px', marginLeft: '-1px' }}>
+            <input
+              ref={getChipEditInputRef?.(`${groupIdx}-${rule.length}`)}
+              value={chipEditState?.query || ""}
+              onChange={(e) => onChipEditChange?.(e.target.value)}
+              onBlur={onChipEditBlur}
+              onKeyDown={onChipEditKeyDown}
+              placeholder="Search users, variables, attributes"
+              className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] outline-none bg-transparent w-full placeholder:text-muted-foreground"
+              style={{ minWidth: '200px' }}
+              autoFocus
+            />
+          </div>
+        </>
+      )}
       {/* trailing divider and add button */}
       <div className="self-stretch border-l border-t border-[rgba(0,0,0,0.1)] px-1 flex items-center" style={{ marginTop: '-1px', marginLeft: '-1px' }}>
-        <button
-          ref={plusRef}
-          onClick={() => {
-            const rect = plusRef.current?.getBoundingClientRect();
-            if (rect) onAddAtEnd(rect);
-          }}
-          className="h-5 w-5 flex items-center justify-center hover:bg-[rgba(0,0,0,0.05)] rounded"
-          title="Add another (AND)"
-        >
-          <Plus className="h-4 w-4 text-[#202022]" />
-        </button>
+        {isOption2 && isEditingThisChip ? (
+          <div className="h-5 w-5" /> // Spacer to maintain layout
+        ) : (
+          <button
+            ref={plusRef}
+            onClick={() => {
+              const rect = plusRef.current?.getBoundingClientRect();
+              if (rect) onAddAtEnd(rect);
+            }}
+            className="h-5 w-5 flex items-center justify-center hover:bg-[rgba(0,0,0,0.05)] rounded"
+            title="Add another (AND)"
+          >
+            <Plus className="h-4 w-4 text-[#202022]" />
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-const ExceptionChip: React.FC<{ chip: Chip; onRemove: () => void; onAdd: (anchor: DOMRect) => void }> = ({ chip, onRemove, onAdd }) => {
+const ExceptionChip: React.FC<{ 
+  chip: Chip; 
+  onRemove: () => void; 
+  onAdd: (anchor: DOMRect) => void;
+  isOption2?: boolean;
+  isEditing?: boolean;
+  editQuery?: string;
+  onEditChange?: (query: string) => void;
+  onEditBlur?: () => void;
+  onEditKeyDown?: (e: React.KeyboardEvent) => void;
+  editInputRef?: (el: HTMLInputElement | null) => void;
+}> = ({ chip, onRemove, onAdd, isOption2 = false, isEditing = false, editQuery = "", onEditChange, onEditBlur, onEditKeyDown, editInputRef }) => {
   const plusRef = useRef<HTMLButtonElement>(null);
   return (
     <div className="flex items-center border px-0" style={{ height: '24px', backgroundColor: '#FAFAFA', borderColor: 'rgba(0,0,0,0.1)', borderRadius: '6px' }}>
@@ -1261,19 +1343,33 @@ const ExceptionChip: React.FC<{ chip: Chip; onRemove: () => void; onAdd: (anchor
           <X className="h-3.5 w-3.5 text-[#202022]" />
         </button>
       </div>
-      {/* trailing divider and add button */}
+      {/* trailing divider and add button or input */}
       <div className="h-full border-l border-[rgba(0,0,0,0.1)] px-1 flex items-center">
-        <button
-          ref={plusRef}
-          onClick={() => {
-            const rect = plusRef.current?.getBoundingClientRect();
-            if (rect) onAdd(rect);
-          }}
-          className="h-5 w-5 flex items-center justify-center hover:bg-[rgba(0,0,0,0.05)] rounded"
-          title="Add another exception"
-        >
-          <Plus className="h-4 w-4 text-[#202022]" />
-        </button>
+        {isOption2 && isEditing ? (
+          <input
+            ref={editInputRef}
+            value={editQuery}
+            onChange={(e) => onEditChange?.(e.target.value)}
+            onBlur={onEditBlur}
+            onKeyDown={onEditKeyDown}
+            placeholder="Search users, variables, attributes"
+            className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] outline-none bg-transparent"
+            style={{ height: '20px', minWidth: '200px' }}
+            autoFocus
+          />
+        ) : (
+          <button
+            ref={plusRef}
+            onClick={() => {
+              const rect = plusRef.current?.getBoundingClientRect();
+              if (rect) onAdd(rect);
+            }}
+            className="h-5 w-5 flex items-center justify-center hover:bg-[rgba(0,0,0,0.05)] rounded"
+            title="Add another exception"
+          >
+            <Plus className="h-4 w-4 text-[#202022]" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1547,17 +1643,23 @@ function generateRuleDescription(rules: RuleGroup, exceptions: Chip[]): string {
   
   // Add exceptions
   if (exceptions.length > 0) {
-    const exceptionNames = exceptions.map(e => {
-      if (e.type === "employee") {
-        const nameMatch = e.label.match(/^([^(]+)/);
-        return nameMatch ? nameMatch[1].trim() : e.label;
-      }
-      return e.label;
-    });
+    const exceptionNames: string[] = [];
+    for (const exceptionGroup of exceptions) {
+      if (exceptionGroup.length === 0) continue;
+      const groupNames = exceptionGroup.map(e => {
+        if (e.type === "employee") {
+          const nameMatch = e.label.match(/^([^(]+)/);
+          return nameMatch ? nameMatch[1].trim() : e.label;
+        }
+        return e.label;
+      });
+      // Join chips in group with " AND "
+      exceptionNames.push(groupNames.join(" AND "));
+    }
     
     if (exceptionNames.length === 1) {
       description += ` -- excluding ${exceptionNames[0]}`;
-    } else {
+    } else if (exceptionNames.length > 1) {
       const last = exceptionNames.pop();
       description += ` -- excluding ${exceptionNames.join(", ")}, and ${last}`;
     }
@@ -1673,9 +1775,9 @@ const TemporalityPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; 
 };
 
 // =============================================================
-// Main Component
+// Supergroup Component (reusable)
 // =============================================================
-export default function Home() {
+const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = false }) => {
   const [rules, setRules] = useState<RuleGroup>([
     [{ id: "var-1", label: "Department → Product Design", type: "variable" }],
     [{ id: "var-2", label: "Work location → San Francisco office", type: "variable" }],
@@ -1685,15 +1787,30 @@ export default function Home() {
     ],
   ]);
 
-  const [exceptions, setExceptions] = useState<Chip[]>([]);
+  const [exceptions, setExceptions] = useState<RuleGroup>([]);
 
   const [popover, setPopover] = useState<{ open: boolean; target: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number } | null; rect: DOMRect | null; currentRule?: Rule; isException?: boolean }>({ open: false, target: null, rect: null, currentRule: [], isException: false });
   const [lastChip, setLastChip] = useState<Chip | null>(null);
+  const [lastExceptionChip, setLastExceptionChip] = useState<Chip | null>(null);
   const [kebabMenuOpen, setKebabMenuOpen] = useState(false);
   const [kebabMenuRect, setKebabMenuRect] = useState<DOMRect | null>(null);
   const [temporalityPopoverOpen, setTemporalityPopoverOpen] = useState(false);
   const [temporalityPopoverRect, setTemporalityPopoverRect] = useState<DOMRect | null>(null);
   const [shouldOpenAddAnother, setShouldOpenAddAnother] = useState(false);
+  const [shouldOpenExceptionAnother, setShouldOpenExceptionAnother] = useState(false);
+  
+  // Inline search state for Option 2
+  const [addMemberQuery, setAddMemberQuery] = useState("");
+  const [excludeQuery, setExcludeQuery] = useState("");
+  const [addMemberActive, setAddMemberActive] = useState(false);
+  const [excludeActive, setExcludeActive] = useState(false);
+  const addMemberInputRef = useRef<HTMLInputElement>(null);
+  const excludeInputRef = useRef<HTMLInputElement>(null);
+  const [pendingPopoverTarget, setPendingPopoverTarget] = useState<{ target: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number } | null; currentRule?: Rule; isException?: boolean } | null>(null);
+  
+  // Inline chip editing state for Option 2
+  const [chipEditState, setChipEditState] = useState<{ groupIdx: number; chipIdx: number; query: string; isException: boolean } | null>(null);
+  const chipEditInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const openPopover = (rect: DOMRect, target: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number }) => {
     // Check if we're adding a new group (target.groupIdx === rules.length)
@@ -1733,29 +1850,384 @@ export default function Home() {
     }
     
     setLastChip(chipToShow);
-    setPopover({ open: true, rect, target, currentRule });
+    
+    // For Option 2, check if this is a chip edit (clicking + on a chip)
+    if (isOption2 && target.chipIdx !== undefined && !target.insertAtEnd) {
+      // This is editing after a specific chip
+      setChipEditState({ 
+        groupIdx: target.groupIdx, 
+        chipIdx: target.chipIdx, 
+        query: "", 
+        isException: false 
+      });
+      setPendingPopoverTarget({ target, currentRule, isException: false });
+      // Open popover immediately with button's rect first, then update to input's rect
+      setPopover({ open: true, rect, target, currentRule });
+      setTimeout(() => {
+        const inputKey = `${target.groupIdx}-${target.chipIdx}`;
+        const inputEl = chipEditInputRefs.current.get(inputKey);
+        if (inputEl) {
+          const inputRect = inputEl.getBoundingClientRect();
+          setPopover(prev => ({ ...prev, rect: inputRect }));
+          inputEl.focus();
+        }
+      }, 0);
+    } else if (isOption2 && target.insertAtEnd) {
+      // This is clicking + at the end of a group - show inline input after last chip
+      // Set chipIdx to rule.length to indicate "after the last chip"
+      const chipIdxForEdit = targetGroup ? targetGroup.length : 0;
+      setChipEditState({ 
+        groupIdx: target.groupIdx, 
+        chipIdx: chipIdxForEdit, 
+        query: "", 
+        isException: false 
+      });
+      setPendingPopoverTarget({ target, currentRule, isException: false });
+      // Open popover immediately with button's rect first, then update to input's rect
+      setPopover({ open: true, rect, target, currentRule });
+      setTimeout(() => {
+        const inputKey = `${target.groupIdx}-${chipIdxForEdit}`;
+        const inputEl = chipEditInputRefs.current.get(inputKey);
+        if (inputEl) {
+          const inputRect = inputEl.getBoundingClientRect();
+          setPopover(prev => ({ ...prev, rect: inputRect }));
+          inputEl.focus();
+        }
+      }, 0);
+    } else if (isOption2 && isNewGroup) {
+      // This is adding a new group - use the add member input
+      setAddMemberActive(true);
+      setAddMemberQuery("");
+      setPendingPopoverTarget({ target, currentRule, isException: false });
+      setTimeout(() => {
+        addMemberInputRef.current?.focus();
+        // Open popover with input's rect
+        if (addMemberInputRef.current) {
+          const inputRect = addMemberInputRef.current.getBoundingClientRect();
+          setPopover({ open: true, rect: inputRect, target, currentRule });
+        }
+      }, 0);
+    } else {
+      setPopover({ open: true, rect, target, currentRule });
+    }
   };
   
   const closePopover = () => {
     setPopover(prev => ({ ...prev, open: false, rect: null, target: null }));
+    // For Option 2, deactivate inline search
+    if (isOption2) {
+      setAddMemberActive(false);
+      setExcludeActive(false);
+      setAddMemberQuery("");
+      setExcludeQuery("");
+      setPendingPopoverTarget(null);
+      // Note: chipEditState is managed by handleChipEditBlur and addChipToRule/addException
+    }
     // Don't clear lastChip or currentRule here - keep them for next time popover opens
+  };
+  
+  // Handler for chip edit input changes
+  const handleChipEditChange = (query: string) => {
+    if (!chipEditState) return;
+    setChipEditState({ ...chipEditState, query });
+    // Open popover when user starts typing
+    if (query && !popover.open && pendingPopoverTarget) {
+      const inputKey = chipEditState.isException 
+        ? `exception-${chipEditState.groupIdx}-${chipEditState.chipIdx}` 
+        : `${chipEditState.groupIdx}-${chipEditState.chipIdx}`;
+      const inputEl = chipEditInputRefs.current.get(inputKey);
+      if (inputEl) {
+        const rect = inputEl.getBoundingClientRect();
+        const target = { groupIdx: chipEditState.groupIdx, chipIdx: chipEditState.chipIdx };
+        const targetGroup = chipEditState.isException 
+          ? exceptions[chipEditState.groupIdx] || []
+          : rules[chipEditState.groupIdx] || [];
+        setPopover({ 
+          open: true, 
+          rect, 
+          target, 
+          currentRule: targetGroup,
+          isException: chipEditState.isException
+        });
+      }
+    }
+    // Update popover position if already open
+    if (popover.open) {
+      const inputKey = chipEditState.isException 
+        ? `exception-${chipEditState.groupIdx}-${chipEditState.chipIdx}` 
+        : `${chipEditState.groupIdx}-${chipEditState.chipIdx}`;
+      const inputEl = chipEditInputRefs.current.get(inputKey);
+      if (inputEl) {
+        const rect = inputEl.getBoundingClientRect();
+        setPopover(prev => ({ ...prev, rect }));
+      }
+    }
+  };
+  
+  // Handler for chip edit blur
+  const handleChipEditBlur = () => {
+    if (!chipEditState) return;
+    // Delay blur check to allow click events to fire first
+    setTimeout(() => {
+      // Don't close if popover is still open (user clicked on an item)
+      if (popover.open) {
+        return;
+      }
+      // Revert chip edit state when clicking away (return chip to original state)
+      setChipEditState(null);
+      closePopover();
+    }, 200);
+  };
+  
+  // Handler for chip edit keydown
+  const handleChipEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setChipEditState(null);
+      closePopover();
+    }
+  };
+  
+  // Helper to get chip edit input ref callback
+  const getChipEditInputRef = (key: string) => (el: HTMLInputElement | null) => {
+    if (el) {
+      chipEditInputRefs.current.set(key, el);
+    } else {
+      chipEditInputRefs.current.delete(key);
+    }
   };
 
   const addChipToRule = (chip: Chip, target: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number }) => {
-    setRules((prev) => addChipToRulePure(prev, chip, target));
-    setLastChip(chip); // Track the last added chip
-    closePopover();
+    let updatedRules: RuleGroup = [];
+    let wasChipEdit = false;
+    
+    // Check if this is from a chip edit input
+    if (isOption2 && chipEditState && !chipEditState.isException) {
+      wasChipEdit = true;
+    }
+    
+    setRules((prev) => {
+      const newRules = addChipToRulePure(prev, chip, target);
+      updatedRules = newRules;
+      
+      // For Option 2, update pendingPopoverTarget to point to next group
+      if (isOption2 && addMemberActive) {
+        // Get the last chip from the newly added group for context
+        const addedGroup = newRules[target.groupIdx];
+        const newLastChip = addedGroup && addedGroup.length > 0 ? addedGroup[addedGroup.length - 1] : chip;
+        setLastChip(newLastChip);
+        // Update target to point to next group (new group)
+        setPendingPopoverTarget({ 
+          target: { groupIdx: newRules.length, insertAtEnd: true }, 
+          currentRule: addedGroup || [],
+          isException: false
+        });
+      } else {
+        setLastChip(chip);
+      }
+      
+      return newRules;
+    });
+    
+    // For Option 2, after selection from chip edit input, switch to "Add member(s)" input
+    if (isOption2 && wasChipEdit) {
+      // Clear chip edit state and activate the "Add member(s)" input at the end
+      setChipEditState(null);
+      setAddMemberActive(true);
+      setAddMemberQuery("");
+      // Update pendingPopoverTarget to point to a NEW group (rules.length) to show "Add another group (OR)"
+      // This matches what happens when clicking the "Add member(s)" button
+      const newGroupIdx = updatedRules.length; // Point to a new group (doesn't exist yet)
+      const newTarget = { groupIdx: newGroupIdx, insertAtEnd: true };
+      setPendingPopoverTarget({ 
+        target: newTarget, 
+        currentRule: [], // Empty rule for new group
+        isException: false
+      });
+      // Update popover target immediately (before setTimeout) so it uses the correct target
+      // Close and reopen popover with correct target to ensure it shows the right content
+      setPopover(prev => ({ 
+        ...prev, 
+        open: false,
+        target: newTarget,
+        currentRule: []
+      }));
+      // Keep popover open and refocus on "Add member(s)" input
+      setTimeout(() => {
+        addMemberInputRef.current?.focus();
+        // Reopen popover with correct target and position
+        if (addMemberInputRef.current) {
+          const rect = addMemberInputRef.current.getBoundingClientRect();
+          setPopover({ 
+            open: true,
+            rect, 
+            target: newTarget,
+            currentRule: [],
+            isException: false
+          });
+        }
+      }, 0);
+    } else if (isOption2 && addMemberActive) {
+      setAddMemberQuery("");
+      // Keep popover open but clear it - it will update as user types
+      // Refocus input after a brief delay
+      setTimeout(() => {
+        addMemberInputRef.current?.focus();
+        // Update popover position
+        if (addMemberInputRef.current && popover.open) {
+          const rect = addMemberInputRef.current.getBoundingClientRect();
+          setPopover(prev => ({ ...prev, rect }));
+        }
+      }, 0);
+    } else {
+      closePopover();
+    }
   };
 
   const removeChip = (groupIdx: number, chipIdx: number) => setRules((prev) => removeChipPure(prev, groupIdx, chipIdx));
 
-  const openExceptionPopover = (rect: DOMRect) => {
-    setPopover({ open: true, rect, target: null, currentRule: [], isException: true });
+  const openExceptionPopover = (rect: DOMRect, target?: { groupIdx: number; chipIdx?: number; insertAtEnd?: boolean }) => {
+    // For Option 2, check if this is editing after a specific exception chip
+    if (isOption2 && target && target.chipIdx !== undefined && !target.insertAtEnd) {
+      const targetGroup = exceptions[target.groupIdx] || [];
+      setChipEditState({ 
+        groupIdx: target.groupIdx, 
+        chipIdx: target.chipIdx, 
+        query: "", 
+        isException: true 
+      });
+      setPendingPopoverTarget({ target, currentRule: targetGroup, isException: true });
+      // Open popover immediately with button's rect first, then update to input's rect
+      setPopover({ open: true, rect, target, currentRule: targetGroup, isException: true });
+      setTimeout(() => {
+        const inputKey = `exception-${target.groupIdx}-${target.chipIdx}`;
+        const inputEl = chipEditInputRefs.current.get(inputKey);
+        if (inputEl) {
+          const inputRect = inputEl.getBoundingClientRect();
+          setPopover(prev => ({ ...prev, rect: inputRect }));
+          inputEl.focus();
+        }
+      }, 0);
+    } else if (isOption2 && target && target.insertAtEnd) {
+      // This is clicking + at the end of an exception group
+      const targetGroup = exceptions[target.groupIdx] || [];
+      const chipIdxForEdit = targetGroup.length;
+      setChipEditState({ 
+        groupIdx: target.groupIdx, 
+        chipIdx: chipIdxForEdit, 
+        query: "", 
+        isException: true 
+      });
+      setPendingPopoverTarget({ target, currentRule: targetGroup, isException: true });
+      setPopover({ open: true, rect, target, currentRule: targetGroup, isException: true });
+      setTimeout(() => {
+        const inputKey = `exception-${target.groupIdx}-${chipIdxForEdit}`;
+        const inputEl = chipEditInputRefs.current.get(inputKey);
+        if (inputEl) {
+          const inputRect = inputEl.getBoundingClientRect();
+          setPopover(prev => ({ ...prev, rect: inputRect }));
+          inputEl.focus();
+        }
+      }, 0);
+    } else if (isOption2) {
+      // This is adding a new exception
+      setExcludeActive(true);
+      setExcludeQuery("");
+      // Set target to point to a new exception group
+      const newGroupTarget = { groupIdx: exceptions.length, insertAtEnd: true };
+      // Get the last exception group for currentRule (for contextual suggestions)
+      const lastExceptionGroup = exceptions.length > 0 ? exceptions[exceptions.length - 1] : [];
+      setPendingPopoverTarget({ target: newGroupTarget, currentRule: lastExceptionGroup, isException: true });
+      setTimeout(() => {
+        excludeInputRef.current?.focus();
+        // Open popover with input's rect
+        if (excludeInputRef.current) {
+          const inputRect = excludeInputRef.current.getBoundingClientRect();
+          setPopover({ open: true, rect: inputRect, target: newGroupTarget, currentRule: lastExceptionGroup, isException: true });
+        }
+      }, 0);
+    } else {
+      // Option 1: open popover with target pointing to new exception group
+      const newGroupTarget = { groupIdx: exceptions.length, insertAtEnd: true };
+      // Get the last exception group for currentRule (for contextual suggestions)
+      const lastExceptionGroup = exceptions.length > 0 ? exceptions[exceptions.length - 1] : [];
+      setPopover({ open: true, rect, target: newGroupTarget, currentRule: lastExceptionGroup, isException: true });
+    }
   };
 
-  const addException = (chip: Chip) => {
-    setExceptions((prev) => [...prev, chip]);
-    closePopover();
+  const addException = (chip: Chip, target?: { groupIdx: number; insertAtEnd?: boolean; chipIdx?: number }) => {
+    const wasChipEdit = isOption2 && chipEditState && chipEditState.isException;
+    
+    // If target is provided, use it; otherwise add to a new group
+    const exceptionTarget = target || { groupIdx: exceptions.length, insertAtEnd: true };
+    
+    let updatedExceptions: RuleGroup = [];
+    setExceptions((prev) => {
+      const newExceptions = addChipToRulePure(prev, chip, exceptionTarget);
+      updatedExceptions = newExceptions;
+      // Update lastExceptionChip for contextual suggestions
+      const addedGroup = newExceptions[exceptionTarget.groupIdx];
+      if (addedGroup && addedGroup.length > 0) {
+        setLastExceptionChip(addedGroup[addedGroup.length - 1]);
+      } else {
+        setLastExceptionChip(chip);
+      }
+      return newExceptions;
+    });
+    
+    // For Option 2, after selection from chip edit input, switch to "EXCLUDE" input
+    if (isOption2 && wasChipEdit) {
+      // Clear chip edit state and activate the "EXCLUDE" input
+      setChipEditState(null);
+      setExcludeActive(true);
+      setExcludeQuery("");
+      // Update pendingPopoverTarget to point to a new exception group (use updated length)
+      const newGroupTarget = { groupIdx: updatedExceptions.length, insertAtEnd: true };
+      // Get the last exception group for currentRule (for contextual suggestions)
+      const lastExceptionGroup = updatedExceptions.length > 0 ? updatedExceptions[updatedExceptions.length - 1] : [];
+      setPendingPopoverTarget({ target: newGroupTarget, currentRule: lastExceptionGroup, isException: true });
+      // Update popover target immediately (before setTimeout) so it uses the correct target
+      // Close and reopen popover with correct target to ensure it shows the right content
+      setPopover(prev => ({ 
+        ...prev, 
+        open: false,
+        target: newGroupTarget,
+        currentRule: lastExceptionGroup,
+        isException: true
+      }));
+      // Keep popover open and refocus on "EXCLUDE" input
+      setTimeout(() => {
+        excludeInputRef.current?.focus();
+        // Reopen popover with correct target and position
+        if (excludeInputRef.current) {
+          const rect = excludeInputRef.current.getBoundingClientRect();
+          setPopover({ 
+            open: true,
+            rect, 
+            target: newGroupTarget,
+            currentRule: lastExceptionGroup,
+            isException: true
+          });
+        }
+      }, 0);
+    } else if (isOption2 && excludeActive) {
+      setExcludeQuery("");
+      // Update popover target to point to a new exception group (for next selection to be OR)
+      const newGroupTarget = { groupIdx: updatedExceptions.length, insertAtEnd: true };
+      // Get the last exception group for currentRule (for contextual suggestions)
+      const lastExceptionGroup = updatedExceptions.length > 0 ? updatedExceptions[updatedExceptions.length - 1] : [];
+      // Keep popover open but update target - it will update as user types
+      // Refocus input after a brief delay
+      setTimeout(() => {
+        excludeInputRef.current?.focus();
+        // Update popover position and target
+        if (excludeInputRef.current && popover.open) {
+          const rect = excludeInputRef.current.getBoundingClientRect();
+          setPopover(prev => ({ ...prev, rect, target: newGroupTarget, currentRule: lastExceptionGroup }));
+        }
+      }, 0);
+    } else {
+      closePopover();
+    }
   };
 
   // Watch for "save and add another" flag and open new popover after rules update
@@ -1771,60 +2243,122 @@ export default function Home() {
     }
   }, [shouldOpenAddAnother, popover.open, rules.length]);
 
-  const removeException = (chipId: string) => {
-    setExceptions((prev) => prev.filter((c) => c.id !== chipId));
+  // Watch for "save and add another" flag for exceptions and open new exception popover after state updates
+  React.useEffect(() => {
+    if (shouldOpenExceptionAnother && !popover.open) {
+      // Find the "EXCLUDE" button and open popover
+      const excludeButton = document.querySelector('[data-exclude-button]') as HTMLElement;
+      if (excludeButton) {
+        const rect = excludeButton.getBoundingClientRect();
+        openExceptionPopover(rect);
+        setShouldOpenExceptionAnother(false);
+      }
+    }
+  }, [shouldOpenExceptionAnother, popover.open]);
+
+  const removeException = (groupIdx: number, chipIdx: number) => {
+    setExceptions((prev) => removeChipPure(prev, groupIdx, chipIdx));
   };
 
   const memberCount = useMemo(() => countMembers(rules), [rules]);
 
   return (
-    <div className="min-h-screen bg-[#faf8fb]">
-      <main className="mx-auto max-w-4xl p-8">
-        <h1 className="text-2xl font-semibold">This is a form title</h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          This is a form caption. This subtext should explain the purpose of the form, what it takes for a user to fill it out and what value it provides after filling out.
-        </p>
-
-        <div className="mt-8 rounded-2xl border bg-white shadow-sm overflow-hidden">
-          {/* Header bar with temporality dropdown and kebab menu */}
-          <div className="flex items-center justify-between border-b px-3 py-2 rounded-t-2xl" style={{ backgroundColor: '#FAFAFA' }}>
-            <button 
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                setTemporalityPopoverRect(rect);
-                setTemporalityPopoverOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-0 h-8 rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
-            >
-              <span className="text-sm font-medium text-[#202022]">Supergroup</span>
-              <span className="text-sm text-[#6F6F72]">evaluated in real time</span>
-              <ChevronDown className="h-4 w-4 text-[#202022]" />
-            </button>
-            <button 
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                setKebabMenuRect(rect);
-                setKebabMenuOpen(true);
-              }}
-              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
-            >
-              <MoreVertical className="h-5 w-5 text-[#202022]" />
-            </button>
-          </div>
-          
-          <div className="p-6">
-          <div className="flex flex-wrap items-center gap-2" style={rules.length === 0 ? { paddingBottom: '32px' } : undefined}>
-            {rules.map((group, groupIdx) => (
-              <div key={groupIdx}>
-                <RulePill
-                  rule={group}
-                  groupIdx={groupIdx}
-                  onRemoveAt={(chipIdx) => removeChip(groupIdx, chipIdx)}
-                  onAddAtEnd={(rect) => openPopover(rect, { groupIdx, insertAtEnd: true })}
-                />
-              </div>
-            ))}
-            <div className="flex-shrink-0" style={{ minWidth: '70px' }}>
+    <>
+      <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+        {/* Header bar with temporality dropdown and kebab menu */}
+        <div className="flex items-center justify-between border-b px-3 py-2 rounded-t-2xl" style={{ backgroundColor: '#FAFAFA' }}>
+          <button 
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+              setTemporalityPopoverRect(rect);
+              setTemporalityPopoverOpen(true);
+            }}
+            className="flex items-center gap-1.5 px-3 py-0 h-8 rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
+          >
+            <span className="text-sm font-medium text-[#202022]">Supergroup</span>
+            <span className="text-sm text-[#6F6F72]">evaluated in real time</span>
+            <ChevronDown className="h-4 w-4 text-[#202022]" />
+          </button>
+          <button 
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+              setKebabMenuRect(rect);
+              setKebabMenuOpen(true);
+            }}
+            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
+          >
+            <MoreVertical className="h-5 w-5 text-[#202022]" />
+          </button>
+        </div>
+        
+        <div className="p-6">
+        <div className="flex flex-wrap items-center gap-2" style={rules.length === 0 ? { paddingBottom: '32px' } : undefined}>
+          {rules.map((group, groupIdx) => (
+            <div key={groupIdx}>
+              <RulePill
+                rule={group}
+                groupIdx={groupIdx}
+                onRemoveAt={(chipIdx) => removeChip(groupIdx, chipIdx)}
+                onAddAtEnd={(rect) => openPopover(rect, { groupIdx, insertAtEnd: true })}
+                onAddAfterChip={isOption2 ? (rect, chipIdx) => openPopover(rect, { groupIdx, chipIdx }) : undefined}
+                isOption2={isOption2}
+                chipEditState={chipEditState}
+                onChipEditChange={handleChipEditChange}
+                onChipEditBlur={handleChipEditBlur}
+                onChipEditKeyDown={handleChipEditKeyDown}
+                getChipEditInputRef={getChipEditInputRef}
+              />
+            </div>
+          ))}
+          <div className="flex-shrink-0" style={{ minWidth: '70px' }}>
+            {isOption2 && addMemberActive ? (
+              <input
+                ref={addMemberInputRef}
+                value={addMemberQuery}
+                onChange={(e) => {
+                  setAddMemberQuery(e.target.value);
+                  // Open popover when user starts typing
+                  if (e.target.value && !popover.open && pendingPopoverTarget) {
+                    const rect = addMemberInputRef.current?.getBoundingClientRect() || new DOMRect();
+                    setPopover({ 
+                      open: true, 
+                      rect, 
+                      target: pendingPopoverTarget.target, 
+                      currentRule: pendingPopoverTarget.currentRule || [],
+                      isException: false
+                    });
+                  }
+                  // Update popover position if already open
+                  if (addMemberInputRef.current && popover.open) {
+                    const rect = addMemberInputRef.current.getBoundingClientRect();
+                    setPopover(prev => ({ ...prev, rect }));
+                  }
+                }}
+                onBlur={(e) => {
+                  // Delay blur check to allow click events to fire first
+                  setTimeout(() => {
+                    // Don't close if popover is still open (user clicked on an item)
+                    if (popover.open) {
+                      return;
+                    }
+                    if (!addMemberQuery.trim()) {
+                      setAddMemberActive(false);
+                      closePopover();
+                    }
+                  }, 200);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setAddMemberActive(false);
+                    closePopover();
+                  }
+                }}
+                placeholder="Search users, variables, attributes"
+                className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] px-2 outline-none"
+                style={{ height: '24px', minWidth: '320px' }}
+                autoFocus
+              />
+            ) : (
               <button
                 data-add-another-group
                 onClick={(e) => {
@@ -1841,24 +2375,85 @@ export default function Home() {
                   <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">ADD</span>
                 )}
               </button>
-            </div>
+            )}
           </div>
+        </div>
 
-          {rules.length > 0 && (
-          <div className="pt-8">
-            <div className="flex flex-wrap items-center gap-1">
-              {exceptions.length > 0 && (
-                <span className="text-[14px] font-medium leading-[20px] text-[#252528]">Except:</span>
-              )}
-              {exceptions.map((exception) => (
-                <ExceptionChip
-                  key={exception.id}
-                  chip={exception}
-                  onRemove={() => removeException(exception.id)}
-                  onAdd={(rect) => openExceptionPopover(rect)}
-                />
-              ))}
+        {rules.length > 0 && (
+        <div className="pt-8">
+          <div className="flex flex-wrap items-center gap-2">
+            {exceptions.length > 0 && exceptions.some(group => group.length > 0) && (
+              <span className="text-[14px] font-medium leading-[20px] text-[#252528]">Except:</span>
+            )}
+            {exceptions.map((exceptionGroup, groupIdx) => (
+              exceptionGroup.length > 0 && (
+                <div key={groupIdx}>
+                  <RulePill
+                    rule={exceptionGroup}
+                    groupIdx={groupIdx}
+                    onRemoveAt={(chipIdx) => removeException(groupIdx, chipIdx)}
+                    onAddAtEnd={(rect) => openExceptionPopover(rect, { groupIdx, insertAtEnd: true })}
+                    onAddAfterChip={isOption2 ? (rect, chipIdx) => openExceptionPopover(rect, { groupIdx, chipIdx }) : undefined}
+                    isOption2={isOption2}
+                    chipEditState={chipEditState?.isException && chipEditState.groupIdx === groupIdx ? chipEditState : null}
+                    onChipEditChange={handleChipEditChange}
+                    onChipEditBlur={handleChipEditBlur}
+                    onChipEditKeyDown={handleChipEditKeyDown}
+                    getChipEditInputRef={(key) => getChipEditInputRef(`exception-${key}`)}
+                  />
+                </div>
+              )
+            ))}
+            {isOption2 && excludeActive ? (
+              <input
+                ref={excludeInputRef}
+                value={excludeQuery}
+                onChange={(e) => {
+                  setExcludeQuery(e.target.value);
+                  // Open popover when user starts typing
+                  if (e.target.value && !popover.open && pendingPopoverTarget) {
+                    const rect = excludeInputRef.current?.getBoundingClientRect() || new DOMRect();
+                    setPopover({ 
+                      open: true, 
+                      rect, 
+                      target: pendingPopoverTarget.target, 
+                      currentRule: pendingPopoverTarget.currentRule || [],
+                      isException: true
+                    });
+                  }
+                  // Update popover position if already open
+                  if (excludeInputRef.current && popover.open) {
+                    const rect = excludeInputRef.current.getBoundingClientRect();
+                    setPopover(prev => ({ ...prev, rect }));
+                  }
+                }}
+                onBlur={(e) => {
+                  // Delay blur check to allow click events to fire first
+                  setTimeout(() => {
+                    // Don't close if popover is still open (user clicked on an item)
+                    if (popover.open) {
+                      return;
+                    }
+                    if (!excludeQuery.trim()) {
+                      setExcludeActive(false);
+                      closePopover();
+                    }
+                  }, 200);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setExcludeActive(false);
+                    closePopover();
+                  }
+                }}
+                placeholder="Search users, variables, attributes"
+                className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] px-2 outline-none"
+                style={{ height: '24px', minWidth: '320px' }}
+                autoFocus
+              />
+            ) : (
               <button
+                data-exclude-button
                 onClick={(e) => {
                   const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
                   openExceptionPopover(rect);
@@ -1869,40 +2464,40 @@ export default function Home() {
                 <UserMinus className="h-3 w-3 text-[#202022] shrink-0" /> 
                 <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">EXCLUDE</span>
               </button>
-            </div>
-          </div>
-          )}
-
-          {rules.length > 0 && (
-          <div className="mt-4 flex items-start justify-between border-t pt-4">
-            <div className="text-sm text-muted-foreground">
-              <span>This will include: </span>
-              <span className="text-[#202022]">
-                {(() => {
-                  const hasAttributesOrVariables = rules.some(group => 
-                    group.some(chip => chip.type === "variable" || chip.label.includes("→"))
-                  );
-                  const description = generateRuleDescription(rules, exceptions);
-                  if (hasAttributesOrVariables) {
-                    return <>Active or recently hired employees who {description}.</>;
-                  }
-                  return <>{description}.</>;
-                })()}
-              </span>
-            </div>
-            <button 
-              className="inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-colors shrink-0" 
-              style={{ height: '24px', borderRadius: '6px', marginLeft: '24px' }}
-              title="Preview people"
-            >
-              <Eye className="h-3 w-3 text-[#202022]" />
-              <span className="text-sm text-[#202022]">{memberCount} members</span>
-            </button>
-          </div>
-          )}
+            )}
           </div>
         </div>
-      </main>
+        )}
+
+        {rules.length > 0 && (
+        <div className="mt-4 flex items-start justify-between border-t pt-4">
+          <div className="text-sm text-muted-foreground">
+            <span>This will include: </span>
+            <span className="text-[#202022]">
+              {(() => {
+                const hasAttributesOrVariables = rules.some(group => 
+                  group.some(chip => chip.type === "variable" || chip.label.includes("→"))
+                );
+                const description = generateRuleDescription(rules, exceptions);
+                if (hasAttributesOrVariables) {
+                  return <>Active or recently hired employees who {description}.</>;
+                }
+                return <>{description}.</>;
+              })()}
+            </span>
+          </div>
+          <button 
+            className="inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-colors shrink-0" 
+            style={{ height: '24px', borderRadius: '6px', marginLeft: '24px' }}
+            title="Preview people"
+          >
+            <Eye className="h-3 w-3 text-[#202022]" />
+            <span className="text-sm text-[#202022]">{memberCount} members</span>
+          </button>
+        </div>
+        )}
+        </div>
+      </div>
 
       <Popover
         open={popover.open}
@@ -1910,27 +2505,75 @@ export default function Home() {
         onClose={closePopover}
         onSelect={(chip, usePreviousGroup, saveAndAddAnother) => {
           if (popover.isException) {
-            addException(chip);
+            // For exceptions, handle the same way as rules
+            if (usePreviousGroup && popover.currentRule) {
+              // Selection from "Common filters (AND)" - add as AND to the previous exception group
+              const prevGroupIdx = exceptions.length > 0 ? exceptions.length - 1 : 0;
+              addException(chip, { groupIdx: prevGroupIdx, insertAtEnd: true });
+            } else if (popover.target) {
+              // For Option 2, if we're adding from excludeActive input and selection is NOT from "Common filters (AND)",
+              // add as a new chip (OR) instead of using the target
+              if (isOption2 && excludeActive && !usePreviousGroup && popover.target.insertAtEnd) {
+                // Add as a new exception group (OR)
+                addException(chip);
+              } else {
+                // Use the target from popover (for + button clicks, etc.)
+                addException(chip, popover.target);
+              }
+            } else {
+              // Add as a new exception group (OR)
+              addException(chip);
+            }
           } else if (usePreviousGroup && popover.currentRule) {
+            // Selection from "Common filters (AND)" - add as AND to the previous chip
             // Find the previous group index (the last group that exists)
             const prevGroupIdx = rules.length > 0 ? rules.length - 1 : 0;
             addChipToRule(chip, { groupIdx: prevGroupIdx, insertAtEnd: true });
           } else if (popover.target) {
-            addChipToRule(chip, popover.target);
+            // For Option 2, if selection is NOT from "Common filters (AND)" and we're adding from "Add member(s)" input,
+            // add as a new chip (OR) instead of AND
+            if (isOption2 && !usePreviousGroup && (addMemberActive || (chipEditState && !chipEditState.isException))) {
+              // If popover.target has chipIdx (not insertAtEnd), it means we were in chip edit mode
+              // In that case, add as OR to the end of the last group
+              if (popover.target.chipIdx !== undefined && !popover.target.insertAtEnd) {
+                const targetGroupIdx = rules.length > 0 ? rules.length - 1 : 0;
+                addChipToRule(chip, { groupIdx: targetGroupIdx, insertAtEnd: true });
+              } else {
+                // Already has insertAtEnd, use it as is (will add as OR)
+                addChipToRule(chip, popover.target);
+              }
+            } else {
+              // Default behavior: use the target as specified
+              addChipToRule(chip, popover.target);
+            }
           }
           
-          // If "save and add another" is checked, set flag to open new popover after state updates
-          if (saveAndAddAnother && popover.rect) {
+          // For Option 2, saveAndAddAnother behavior is handled by addChipToRule/addException
+          // For non-Option 2, if "save and add another" is checked, set flag to open new popover after state updates
+          if (saveAndAddAnother && popover.rect && !isOption2) {
             // Close current popover first
             closePopover();
-            // Set flag to open new popover after rules state updates
-            setShouldOpenAddAnother(true);
+            if (popover.isException) {
+              // For exceptions, set flag to open exception popover again (as if "Exclude" button was clicked)
+              setShouldOpenExceptionAnother(true);
+            } else {
+              // For rules, set flag to open new popover after rules state updates
+              setShouldOpenAddAnother(true);
+            }
           }
         }}
-        lastChip={lastChip}
-        isNewGroup={popover.target?.groupIdx === rules.length}
+        lastChip={popover.isException ? lastExceptionChip : lastChip}
+        isNewGroup={popover.isException ? (popover.target?.groupIdx === exceptions.length) : (popover.target?.groupIdx === rules.length)}
         currentRule={popover.currentRule || []}
-        previousGroupIdx={rules.length > 0 ? rules.length - 1 : undefined}
+        previousGroupIdx={popover.isException ? (exceptions.length > 0 ? exceptions.length - 1 : undefined) : (rules.length > 0 ? rules.length - 1 : undefined)}
+        isException={popover.isException}
+        exceptionsLength={exceptions.length}
+        externalQuery={isOption2 ? (
+          chipEditState ? chipEditState.query :
+          popover.isException ? excludeQuery : addMemberQuery
+        ) : undefined}
+        hideSearchBar={isOption2 && (addMemberActive || excludeActive || !!chipEditState)}
+        isOption2={isOption2}
       />
 
       <KebabMenuDropdown
@@ -1950,6 +2593,35 @@ export default function Home() {
           setTemporalityPopoverRect(null);
         }}
       />
+    </>
+  );
+};
+
+// =============================================================
+// Main Component
+// =============================================================
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-[#faf8fb]">
+      <main className="mx-auto max-w-4xl p-8">
+        <h1 className="text-2xl font-semibold">This is a form title</h1>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          This is a form caption. This subtext should explain the purpose of the form, what it takes for a user to fill it out and what value it provides after filling out.
+        </p>
+
+        <Tabs defaultValue="option1" className="mt-8">
+          <TabsList>
+            <TabsTrigger value="option1">Option 1</TabsTrigger>
+            <TabsTrigger value="option2">Option 2</TabsTrigger>
+          </TabsList>
+          <TabsContent value="option1">
+            <SupergroupComponent />
+          </TabsContent>
+          <TabsContent value="option2">
+            <SupergroupComponent isOption2={true} />
+          </TabsContent>
+        </Tabs>
+      </main>
     </div>
   );
 }
