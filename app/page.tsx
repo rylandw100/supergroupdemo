@@ -2015,10 +2015,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         const addedGroup = newRules[target.groupIdx];
         const newLastChip = addedGroup && addedGroup.length > 0 ? addedGroup[addedGroup.length - 1] : chip;
         setLastChip(newLastChip);
-        // Update target to point to next group (new group)
+        // Update target to point to next group (new group) with empty currentRule to show "Add another group (OR)"
         setPendingPopoverTarget({ 
           target: { groupIdx: newRules.length, insertAtEnd: true }, 
-          currentRule: addedGroup || [],
+          currentRule: [], // Empty to show "Add another group (OR)" instead of AND suggestions
           isException: false
         });
       } else {
@@ -2068,14 +2068,16 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
       }, 0);
     } else if (isOption2 && addMemberActive) {
       setAddMemberQuery("");
-      // Keep popover open but clear it - it will update as user types
+      // Update popover target to point to a new group with empty currentRule to show "Add another group (OR)"
+      const newGroupTarget = { groupIdx: updatedRules.length, insertAtEnd: true };
+      // Keep popover open but update target and currentRule - it will update as user types
       // Refocus input after a brief delay
       setTimeout(() => {
         addMemberInputRef.current?.focus();
-        // Update popover position
+        // Update popover position, target, and currentRule
         if (addMemberInputRef.current && popover.open) {
           const rect = addMemberInputRef.current.getBoundingClientRect();
-          setPopover(prev => ({ ...prev, rect }));
+          setPopover(prev => ({ ...prev, rect, target: newGroupTarget, currentRule: [] }));
         }
       }, 0);
     } else {
