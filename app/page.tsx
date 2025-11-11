@@ -1378,7 +1378,7 @@ const ExceptionChip: React.FC<{
 // =============================================================
 // Helper function to generate rule description
 // =============================================================
-function generateRuleDescription(rules: RuleGroup, exceptions: Chip[]): string {
+function generateRuleDescription(rules: RuleGroup, exceptions: RuleGroup): string {
   if (rules.length === 0) {
     return "No rules defined";
   }
