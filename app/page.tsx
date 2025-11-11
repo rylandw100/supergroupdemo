@@ -1872,8 +1872,21 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
           inputEl.focus();
         }
       }, 0);
+    } else if (isOption2 && isNewGroup) {
+      // This is adding a new group - use the add member input
+      setAddMemberActive(true);
+      setAddMemberQuery("");
+      setPendingPopoverTarget({ target, currentRule, isException: false });
+      setTimeout(() => {
+        addMemberInputRef.current?.focus();
+        // Open popover with input's rect
+        if (addMemberInputRef.current) {
+          const inputRect = addMemberInputRef.current.getBoundingClientRect();
+          setPopover({ open: true, rect: inputRect, target, currentRule });
+        }
+      }, 0);
     } else if (isOption2 && target.insertAtEnd) {
-      // This is clicking + at the end of a group - show inline input after last chip
+      // This is clicking + at the end of an existing group - show inline input after last chip
       // Set chipIdx to rule.length to indicate "after the last chip"
       const chipIdxForEdit = targetGroup ? targetGroup.length : 0;
       setChipEditState({ 
@@ -1892,19 +1905,6 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
           const inputRect = inputEl.getBoundingClientRect();
           setPopover(prev => ({ ...prev, rect: inputRect }));
           inputEl.focus();
-        }
-      }, 0);
-    } else if (isOption2 && isNewGroup) {
-      // This is adding a new group - use the add member input
-      setAddMemberActive(true);
-      setAddMemberQuery("");
-      setPendingPopoverTarget({ target, currentRule, isException: false });
-      setTimeout(() => {
-        addMemberInputRef.current?.focus();
-        // Open popover with input's rect
-        if (addMemberInputRef.current) {
-          const inputRect = addMemberInputRef.current.getBoundingClientRect();
-          setPopover({ open: true, rect: inputRect, target, currentRule });
         }
       }, 0);
     } else {
