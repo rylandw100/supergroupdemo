@@ -466,10 +466,7 @@ const Popover: React.FC<{
       });
     }
     
-    // Add "AND Other" button (Operators section) - only show when there's no query and suggestions are not shown and not in empty add members popover
-    if (!q && !(isNewGroup && lastChip === null) && !showSuggestions) {
-      list.push({ type: 'suggestion', data: { isOther: true }, label: 'AND Other' });
-    }
+    // Operators section removed - no longer showing "AND Other" button
     
     // Add attributes - filter by query
     const filteredAttributes = q 
@@ -861,30 +858,6 @@ const Popover: React.FC<{
                       })}
                     </Section>
                   )
-                ) : !q && !(isNewGroup && lastChip === null) ? (
-                  <Section title="Operators" emptyText="No operators available.">
-                    {(() => {
-                      const flatIdx = currentIdx++;
-                      return (
-                        <button
-                          data-idx={flatIdx}
-                          onClick={() => {
-                            const attrSection = containerRef.current?.querySelector('[data-section="attributes"]');
-                            if (attrSection) {
-                              attrSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }
-                          }}
-                          onMouseEnter={() => setFocusedIdx(flatIdx)}
-                          className={`flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60 ${focusedIdx === flatIdx ? "bg-muted/70 ring-1 ring-black/10" : ""}`}
-                        >
-                          <span className="line-clamp-1">AND Other</span>
-                          {focusedIdx === flatIdx ? (
-                            <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-                          ) : null}
-                        </button>
-                      );
-                    })()}
-                    </Section>
                 ) : null}
                 {isNewGroup && showSuggestions && (
                   <div className="border-t border-[rgba(0,0,0,0.1)] my-2"></div>
