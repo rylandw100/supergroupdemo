@@ -2631,7 +2631,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">3</span>
                     <div>
                       <p className="text-sm text-[#202022]">
-                        We next assess any pre-existing rules that would impact whether an employee can get added to this group. In this case of this supergroup, there's a pre-existing rule that we should only add employees based in the United States.
+                        We next assess any pre-existing rules that would impact whether an employee can get added to this group. In this case of this supergroup, there&apos;s a pre-existing rule that we should only add employees based in the United States.
                       </p>
                     </div>
                   </div>
@@ -2653,7 +2653,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">5</span>
                     <div>
                       <p className="text-sm text-[#202022]">
-                        We'll remove individuals or groups added as exclusions.
+                        We&apos;ll remove individuals or groups added as exclusions.
                       </p>
                     </div>
                   </div>
