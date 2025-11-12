@@ -1787,6 +1787,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   const [temporalityPopoverRect, setTemporalityPopoverRect] = useState<DOMRect | null>(null);
   const [shouldOpenAddAnother, setShouldOpenAddAnother] = useState(false);
   const [shouldOpenExceptionAnother, setShouldOpenExceptionAnother] = useState(false);
+  const [learnMoreDrawerOpen, setLearnMoreDrawerOpen] = useState(false);
   
   // Inline search state for Option 2
   const [addMemberQuery, setAddMemberQuery] = useState("");
@@ -2463,18 +2464,14 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         {rules.length > 0 && (
         <div className="mt-4 flex items-start justify-between border-t pt-4">
           <div className="text-sm text-muted-foreground">
-            <span>This will include: </span>
             <span className="text-[#202022]">
-              {(() => {
-                const hasAttributesOrVariables = rules.some(group => 
-                  group.some(chip => chip.type === "variable" || chip.label.includes("→"))
-                );
-                const description = generateRuleDescription(rules, exceptions);
-                if (hasAttributesOrVariables) {
-                  return <>Active or recently hired employees who {description}.</>;
-                }
-                return <>{description}.</>;
-              })()}
+              This group includes only active or recently hired employees in the United States who meet any of the above conditions, updated in real time.{" "}
+              <button
+                onClick={() => setLearnMoreDrawerOpen(true)}
+                className="text-[#202022] underline hover:no-underline"
+              >
+                Learn more
+              </button>
             </span>
           </div>
           <button 
@@ -2584,6 +2581,88 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
           setTemporalityPopoverRect(null);
         }}
       />
+
+      {/* Learn More Drawer */}
+      {learnMoreDrawerOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setLearnMoreDrawerOpen(false)}
+          />
+          {/* Drawer */}
+          <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-xl z-50 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold">How members are calculated</h2>
+                <button
+                  onClick={() => setLearnMoreDrawerOpen(false)}
+                  className="p-1 hover:bg-muted rounded"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">1</span>
+                    <div>
+                      <p className="text-sm text-[#202022]">
+                        We first look at the temporality setting. This group is evaluating membership in real time.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">2</span>
+                    <div>
+                      <p className="text-sm text-[#202022]">
+                        employment state setting to figure out the total pool of employees who can be assessed
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">3</span>
+                    <div>
+                      <p className="text-sm text-[#202022]">
+                        We next assess any pre-existing rules that would impact whether an employee can get added to this group. In this case of this supergroup, there's a pre-existing rule that we should only add employees based in the United States.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">4</span>
+                    <div>
+                      <p className="text-sm text-[#202022]">
+                        Employees who meet the scope requirements and match any of the conditions in the supergroup will be added to this group.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">5</span>
+                    <div>
+                      <p className="text-sm text-[#202022]">
+                        We'll remove individuals or groups added as exclusions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 };
