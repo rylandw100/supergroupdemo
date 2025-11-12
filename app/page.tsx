@@ -2605,58 +2605,38 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               
               <div className="space-y-6">
                 <div>
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">1</span>
-                    <div>
-                      <p className="text-sm text-[#202022]">
-                        We first look at the temporality setting. This group is evaluating membership in real time.
-                      </p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Temporality setting</h3>
+                  <p className="text-sm text-[#202022]">
+                    We start by checking the temporality setting. This group evaluates membership in real time.
+                  </p>
                 </div>
 
                 <div>
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">2</span>
-                    <div>
-                      <p className="text-sm text-[#202022]">
-                        employment state setting to figure out the total pool of employees who can be assessed
-                      </p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Employment state setting</h3>
+                  <p className="text-sm text-[#202022]">
+                    Next, we identify the total pool of employees eligible for assessment based on their employment state.
+                  </p>
                 </div>
 
                 <div>
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">3</span>
-                    <div>
-                      <p className="text-sm text-[#202022]">
-                        We next assess any pre-existing rules that would impact whether an employee can get added to this group. In this case of this supergroup, there&apos;s a pre-existing rule that we should only add employees based in the United States.
-                      </p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Pre-existing rules</h3>
+                  <p className="text-sm text-[#202022]">
+                    We then review any existing rules that may affect whether an employee can be added to the group.
+                  </p>
                 </div>
 
                 <div>
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">4</span>
-                    <div>
-                      <p className="text-sm text-[#202022]">
-                        Employees who meet the scope requirements and match any of the conditions in the supergroup will be added to this group.
-                      </p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Scope and conditions</h3>
+                  <p className="text-sm text-[#202022]">
+                    Employees who meet the scope requirements and satisfy any of the defined conditions will be added to the group.
+                  </p>
                 </div>
 
                 <div>
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#202022] text-white text-sm font-medium flex items-center justify-center">5</span>
-                    <div>
-                      <p className="text-sm text-[#202022]">
-                        We&apos;ll remove individuals or groups added as exclusions.
-                      </p>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Exclusions</h3>
+                  <p className="text-sm text-[#202022]">
+                    Finally, any individuals or groups listed as exclusions will be removed.
+                  </p>
                 </div>
               </div>
             </div>
