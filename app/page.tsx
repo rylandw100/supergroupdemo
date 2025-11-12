@@ -326,22 +326,29 @@ const Section: React.FC<{ title: string; emptyText: string; children: React.Reac
   );
 };
 
-const OptionRow: React.FC<{ label: string; badge?: string; onClick: () => void; focused?: boolean; onMouseEnter?: () => void; dataIdx?: number }> = ({ label, badge, onClick, focused = false, onMouseEnter, dataIdx }) => (
+const OptionRow: React.FC<{ label: string; badge?: string; onClick: () => void; focused?: boolean; onMouseEnter?: () => void; dataIdx?: number; disabled?: boolean; subtext?: string }> = ({ label, badge, onClick, focused = false, onMouseEnter, dataIdx, disabled = false, subtext }) => (
   <button 
-    onClick={onClick} 
-    onMouseEnter={onMouseEnter}
+    onClick={disabled ? undefined : onClick} 
+    onMouseEnter={disabled ? undefined : onMouseEnter}
     data-idx={dataIdx}
-    className={`flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-muted/60 ${focused ? "bg-muted/70 ring-1 ring-black/10" : ""}`}
+    disabled={disabled}
+    className={`flex w-full flex-col rounded-lg px-2 py-2 text-left text-sm ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-muted/60"} ${focused && !disabled ? "bg-muted/70 ring-1 ring-black/10" : ""}`}
     role="option"
     aria-selected={focused}
+    aria-disabled={disabled}
   >
-    <span className="line-clamp-1">{label}</span>
-    <div className="ml-2 flex items-center gap-2">
-      {focused ? (
-        <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
-      ) : null}
-      {badge ? <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{badge}</span> : null}
+    <div className="flex items-center justify-between">
+      <span className="line-clamp-1">{label}</span>
+      <div className="ml-2 flex items-center gap-2">
+        {focused && !disabled ? (
+          <span className="rounded-full bg-black px-2 py-0.5 text-[10px] font-semibold uppercase text-white">TAB</span>
+        ) : null}
+        {badge ? <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{badge}</span> : null}
+      </div>
     </div>
+    {subtext && (
+      <span className="text-xs text-muted-foreground mt-1">{subtext}</span>
+    )}
   </button>
 );
 
@@ -454,7 +461,7 @@ const Popover: React.FC<{
 
   // Build flat list of all options in order matching the rendered UI: Common filters → Operators → Attributes → Employees → Variables
   const flatList = useMemo(() => {
-    const list: Array<{ type: 'suggestion' | 'attribute' | 'employee' | 'variable'; data: any; label: string }> = [];
+    const list: Array<{ type: 'suggestion' | 'attribute' | 'employee' | 'variable'; data: any; label: string; disabled?: boolean }> = [];
     const q = effectiveQuery.trim().toLowerCase();
     // For exceptions in Option 1, hide suggestions when exceptions are empty
     const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null && !(isException && !isOption2 && exceptionsLength === 0);
@@ -478,7 +485,7 @@ const Popover: React.FC<{
     
     // Add employees
     people.forEach(p => {
-      list.push({ type: 'employee', data: p, label: p.label });
+      list.push({ type: 'employee', data: p, label: p.label, disabled: p.id === "emp-6" });
     });
     
     // Add variables
@@ -610,13 +617,17 @@ const Popover: React.FC<{
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         setFocusedIdx((i) => {
-          const next = e.key === "ArrowDown" ? i + 1 : i - 1;
+          let next = e.key === "ArrowDown" ? i + 1 : i - 1;
+          // Skip disabled items
+          while (next >= 0 && next < total && flatList[next]?.disabled) {
+            next = e.key === "ArrowDown" ? next + 1 : next - 1;
+          }
           return Math.max(0, Math.min(total - 1, next));
         });
       } else if (e.key === "Enter" || (e.key === "Tab" && !e.shiftKey)) {
         e.preventDefault();
         const item = flatList[focusedIdx];
-        if (!item) return;
+        if (!item || item.disabled) return;
 
         if (item.type === 'suggestion') {
           if (item.data.isOther) {
@@ -902,6 +913,7 @@ const Popover: React.FC<{
                 <Section title="Employees" emptyText="No employees match your search.">
                   {people.map((p, idx) => {
                     const flatIdx = currentIdx++;
+                    const isLuisRomero = p.id === "emp-6";
                     return (
                       <OptionRow 
                         key={p.id} 
@@ -909,7 +921,9 @@ const Popover: React.FC<{
                         label={p.label} 
                         focused={focusedIdx === flatIdx}
                         onMouseEnter={() => setFocusedIdx(flatIdx)}
-                        onClick={() => onSelect(p as Chip)} 
+                        onClick={() => onSelect(p as Chip)}
+                        disabled={isLuisRomero}
+                        subtext={isLuisRomero ? "This individual can't be added due to provisioning rules" : undefined}
                       />
                     );
                   })}
