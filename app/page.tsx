@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useRef, useState } from "react";
-import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History } from "lucide-react";
+import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History, Pencil } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // =============================================================
@@ -2613,15 +2613,27 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
 
                 <div>
                   <h3 className="text-sm font-semibold text-[#202022] mb-2">Employment state setting</h3>
-                  <p className="text-sm text-[#202022]">
+                  <p className="text-sm text-[#202022] mb-3">
                     Next, we identify the total pool of employees eligible for assessment based on their employment state.
                   </p>
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[rgba(0,0,0,0.05)] rounded-lg border border-[rgba(0,0,0,0.1)]">
+                    <span className="text-sm text-[#202022]">Employment state is active, recently hired</span>
+                    <button className="p-1 hover:bg-[rgba(0,0,0,0.1)] rounded">
+                      <Pencil className="h-3.5 w-3.5 text-[#202022]" />
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold text-[#202022] mb-2">Pre-existing rules</h3>
-                  <p className="text-sm text-[#202022]">
+                  <p className="text-sm text-[#202022] mb-3">
                     We then review any existing rules that may affect whether an employee can be added to the group.
+                  </p>
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[rgba(0,0,0,0.05)] rounded-lg border border-[rgba(0,0,0,0.1)] opacity-50 cursor-not-allowed">
+                    <span className="text-sm text-[#202022]">Country is United States</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    This rule is coming from the Time off admin
                   </p>
                 </div>
 
