@@ -2635,7 +2635,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                   <p className="text-sm text-[#202022] mb-3">
                     We then review any existing rules that may affect whether an employee can be added to the group.
                   </p>
-                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[rgba(0,0,0,0.05)] rounded-lg border border-[rgba(0,0,0,0.1)] opacity-50 cursor-not-allowed">
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 bg-[rgba(0,0,0,0.05)] rounded-lg border border-[rgba(0,0,0,0.1)]">
                     <span className="text-sm text-[#202022]">Country is United States</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
@@ -2660,7 +2660,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                               <div key={chip.id} className="flex items-center" style={{ gap: '8px' }}>
                                 {chipIdx === 0 && groupIdx === 0 ? (
                                   <>
-                                    <div style={{ width: '32px', flexShrink: 0 }}></div>
+                                    <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}></div>
                                     <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
@@ -2676,7 +2676,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                   </>
                                 ) : (
                                   <>
-                                    <div style={{ width: '32px', flexShrink: 0 }}></div>
+                                    <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}></div>
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
                                       <span className="text-xs font-medium text-[#252528]">AND</span>
                                     </div>
