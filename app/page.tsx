@@ -844,9 +844,11 @@ const Popover: React.FC<{
       {(!hideSearchBar || mode === 'attr') && (
         <div className="flex items-center gap-2 border-b p-3">
           {mode === 'attr' ? (
-            <button onClick={() => setMode('list')} className="mr-1 rounded p-1 hover:bg-muted" title="Back">
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+            !chipToEdit && (
+              <button onClick={() => setMode('list')} className="mr-1 rounded p-1 hover:bg-muted" title="Back">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            )
           ) : (
             <Search className="h-4 w-4 opacity-60" />
           )}
@@ -1220,7 +1222,7 @@ const Popover: React.FC<{
           </div>
           {/* Footer actions - outside scrollable area */}
           <div className="flex items-center justify-between gap-2 border-t pt-3 px-3 pb-3 bg-white">
-            {!isOption2 && (
+            {!isOption2 && !chipToEdit && (
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1231,7 +1233,7 @@ const Popover: React.FC<{
                 <span className="text-sm text-[#202022]">Save and add another</span>
               </label>
             )}
-            {isOption2 && <div />}
+            {(isOption2 || chipToEdit) && <div />}
             <div className="flex items-center gap-2" style={{ marginLeft: '18px' }}>
               <button onClick={resetAndClose} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted/60">Cancel</button>
               <button 
@@ -1296,7 +1298,7 @@ const RulePill: React.FC<{
   onChipEditBlur?: () => void;
   onChipEditKeyDown?: (e: React.KeyboardEvent) => void;
   getChipEditInputRef?: (key: string) => (el: HTMLInputElement | null) => void;
-  onChipClick?: (chip: Chip, chipIdx: number) => void;
+  onChipClick?: (chip: Chip, chipIdx: number, rect: DOMRect) => void;
 }> = ({ rule, groupIdx, onRemoveAt, onAddAtEnd, onAddAfterChip, isOption2 = false, chipEditState, onChipEditChange, onChipEditBlur, onChipEditKeyDown, getChipEditInputRef, onChipClick }) => {
   const plusRef = useRef<HTMLButtonElement>(null);
   const isEditingThisChip = chipEditState?.groupIdx === groupIdx && chipEditState?.chipIdx === rule.length;
@@ -1314,7 +1316,10 @@ const RulePill: React.FC<{
               onRemove={() => onRemoveAt(idx)} 
               isLast={idx === rule.length - 1 && !isEditingThis} 
               isFirst={idx === 0}
-              onClick={onChipClick ? () => onChipClick(chip, idx) : undefined}
+              onClick={onChipClick ? (e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                onChipClick(chip, idx, rect);
+              } : undefined}
             />
             {/* Inline input after this chip if editing in Option 2 */}
             {isEditingThis && (
@@ -1993,7 +1998,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   };
 
   // Handle chip click to edit (from Supergroup component)
-  const handleChipClick = (chip: Chip, groupIdx: number, chipIdx: number) => {
+  const handleChipClick = (chip: Chip, groupIdx: number, chipIdx: number, rect: DOMRect) => {
     const parsed = parseChipForEditing(chip);
     if (!parsed) return;
     
@@ -2004,13 +2009,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
     // Store chip to edit info
     setChipToEdit({ chip, groupIdx, chipIdx });
     
-    // Open popover with attribute form
+    // Open popover with attribute form, positioned at the bottom of the clicked chip
     const target = { groupIdx, chipIdx };
     const targetGroup = rules[groupIdx] || [];
     const currentRule = targetGroup;
-    
-    // Create a dummy rect for the popover (will be positioned by the popover component)
-    const rect = new DOMRect(0, 0, 0, 0);
     
     setPopover({
       open: true,
@@ -2404,7 +2406,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 onChipEditBlur={handleChipEditBlur}
                 onChipEditKeyDown={handleChipEditKeyDown}
                 getChipEditInputRef={getChipEditInputRef}
-                onChipClick={(chip, chipIdx) => handleChipClick(chip, groupIdx, chipIdx)}
+                onChipClick={(chip, chipIdx, rect) => handleChipClick(chip, groupIdx, chipIdx, rect)}
               />
             </div>
           ))}
