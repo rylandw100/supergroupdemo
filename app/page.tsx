@@ -1264,7 +1264,7 @@ const AndBadge = () => (
   </div>
 );
 
-const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean; isFirst?: boolean; onClick?: () => void }> = ({ text, onRemove, isLast = false, isFirst = false, onClick }) => (
+const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean; isFirst?: boolean; onClick?: (e: React.MouseEvent<HTMLElement>) => void }> = ({ text, onRemove, isLast = false, isFirst = false, onClick }) => (
   <div 
     className={`relative group/seg select-none px-3 py-1 self-stretch flex items-center shrink-0 ${!isFirst ? 'border-t border-[rgba(0,0,0,0.1)]' : ''} ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''} ${onClick ? 'cursor-pointer hover:bg-[rgba(0,0,0,0.05)] transition-colors' : ''}`} 
     style={!isFirst ? { marginTop: '-1px', marginLeft: '-1px' } : { marginLeft: '-1px' }}
