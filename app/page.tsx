@@ -1262,12 +1262,19 @@ const AndBadge = () => (
   </div>
 );
 
-const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean; isFirst?: boolean }> = ({ text, onRemove, isLast = false, isFirst = false }) => (
-  <div className={`relative group/seg select-none px-3 py-1 self-stretch flex items-center shrink-0 ${!isFirst ? 'border-t border-[rgba(0,0,0,0.1)]' : ''} ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''}`} style={!isFirst ? { marginTop: '-1px', marginLeft: '-1px' } : { marginLeft: '-1px' }}>
+const LabelSegment: React.FC<{ text: string; onRemove: () => void; isLast?: boolean; isFirst?: boolean; onClick?: () => void }> = ({ text, onRemove, isLast = false, isFirst = false, onClick }) => (
+  <div 
+    className={`relative group/seg select-none px-3 py-1 self-stretch flex items-center shrink-0 ${!isFirst ? 'border-t border-[rgba(0,0,0,0.1)]' : ''} ${!isLast ? 'border-r border-[rgba(0,0,0,0.1)]' : ''} ${onClick ? 'cursor-pointer hover:bg-[rgba(0,0,0,0.05)] transition-colors' : ''}`} 
+    style={!isFirst ? { marginTop: '-1px', marginLeft: '-1px' } : { marginLeft: '-1px' }}
+    onClick={onClick}
+  >
     <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] break-words whitespace-normal">{text}</span>
     {/* close button on the right; appears on hover/focus */}
     <button
-      onClick={onRemove}
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove();
+      }}
       className="absolute right-1 top-1/2 hidden h-5 w-5 -translate-y-1/2 items-center justify-center rounded hover:bg-[rgba(0,0,0,0.05)] group-hover/seg:flex focus:flex focus:outline-none"
       style={{ backgroundColor: '#F2F2F2' }}
       title="Remove"
@@ -1289,7 +1296,8 @@ const RulePill: React.FC<{
   onChipEditBlur?: () => void;
   onChipEditKeyDown?: (e: React.KeyboardEvent) => void;
   getChipEditInputRef?: (key: string) => (el: HTMLInputElement | null) => void;
-}> = ({ rule, groupIdx, onRemoveAt, onAddAtEnd, onAddAfterChip, isOption2 = false, chipEditState, onChipEditChange, onChipEditBlur, onChipEditKeyDown, getChipEditInputRef }) => {
+  onChipClick?: (chip: Chip, chipIdx: number) => void;
+}> = ({ rule, groupIdx, onRemoveAt, onAddAtEnd, onAddAfterChip, isOption2 = false, chipEditState, onChipEditChange, onChipEditBlur, onChipEditKeyDown, getChipEditInputRef, onChipClick }) => {
   const plusRef = useRef<HTMLButtonElement>(null);
   const isEditingThisChip = chipEditState?.groupIdx === groupIdx && chipEditState?.chipIdx === rule.length;
   
@@ -1301,7 +1309,13 @@ const RulePill: React.FC<{
         return (
           <React.Fragment key={`${chip.id}-${idx}`}>
             {idx > 0 && <AndBadge />}
-            <LabelSegment text={chip.label} onRemove={() => onRemoveAt(idx)} isLast={idx === rule.length - 1 && !isEditingThis} isFirst={idx === 0} />
+            <LabelSegment 
+              text={chip.label} 
+              onRemove={() => onRemoveAt(idx)} 
+              isLast={idx === rule.length - 1 && !isEditingThis} 
+              isFirst={idx === 0}
+              onClick={onChipClick ? () => onChipClick(chip, idx) : undefined}
+            />
             {/* Inline input after this chip if editing in Option 2 */}
             {isEditingThis && (
               <>
@@ -1978,13 +1992,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
     // Don't clear lastChip or currentRule here - keep them for next time popover opens
   };
 
-  // Handle chip click in drawer to edit
-  const handleDrawerChipClick = (chip: Chip, groupIdx: number, chipIdx: number) => {
+  // Handle chip click to edit (from Supergroup component)
+  const handleChipClick = (chip: Chip, groupIdx: number, chipIdx: number) => {
     const parsed = parseChipForEditing(chip);
     if (!parsed) return;
-    
-    // Close drawer
-    setLearnMoreDrawerOpen(false);
     
     // Find the attribute definition
     const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === parsed.attrKind);
@@ -2393,6 +2404,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 onChipEditBlur={handleChipEditBlur}
                 onChipEditKeyDown={handleChipEditKeyDown}
                 getChipEditInputRef={getChipEditInputRef}
+                onChipClick={(chip, chipIdx) => handleChipClick(chip, groupIdx, chipIdx)}
               />
             </div>
           ))}
@@ -2772,10 +2784,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                 {chipIdx === 0 && groupIdx === 0 ? (
                                   <>
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}></div>
-                                    <div 
-                                      className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)] cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors"
-                                      onClick={() => handleDrawerChipClick(chip, groupIdx, chipIdx)}
-                                    >
+                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
                                   </>
@@ -2784,10 +2793,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
                                       <span className="text-xs font-medium text-[#252528]">OR</span>
                                     </div>
-                                    <div 
-                                      className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)] cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors"
-                                      onClick={() => handleDrawerChipClick(chip, groupIdx, chipIdx)}
-                                    >
+                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
                                   </>
@@ -2797,10 +2803,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
                                       <span className="text-xs font-medium text-[#252528]">AND</span>
                                     </div>
-                                    <div 
-                                      className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)] cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors"
-                                      onClick={() => handleDrawerChipClick(chip, groupIdx, chipIdx)}
-                                    >
+                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
                                   </>
