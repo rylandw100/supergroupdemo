@@ -193,6 +193,36 @@ function getChipType(chip: Chip): string {
   return "";
 }
 
+// Parse chip label to extract attribute info for editing
+function parseChipForEditing(chip: Chip): { attrKind: string; operator?: string; values?: string[] } | null {
+  const label = chip.label;
+  const attrType = getChipType(chip);
+  
+  if (!attrType) return null;
+  
+  // Parse "Department → Product Design" format
+  if (label.includes("→")) {
+    const match = label.match(/(.+?)\s*→\s*(.+)/);
+    if (match) {
+      const value = match[2].trim();
+      return { attrKind: attrType, operator: "is any of", values: [value] };
+    }
+  }
+  
+  // Parse "Work location is any of San Francisco" format
+  if (label.includes("is any of") || label.includes("is not any of") || label.includes("is all of")) {
+    const operatorMatch = label.match(/(is any of|is not any of|is all of)/i);
+    const operator = operatorMatch ? operatorMatch[1] : "is any of";
+    const valueMatch = label.match(/(?:is any of|is not any of|is all of)\s+(.+)/i);
+    if (valueMatch) {
+      const values = valueMatch[1].split(",").map(v => v.trim());
+      return { attrKind: attrType, operator, values };
+    }
+  }
+  
+  return { attrKind: attrType };
+}
+
 // Generate contextual suggestions based on last chip and current rule
 function getContextualSuggestions(lastChip: Chip | null, currentRule: Rule = []): Array<{ label: string; preview: string; attributeKind?: string }> {
   if (!lastChip || lastChip.type === "employee") return [];
@@ -496,21 +526,50 @@ const Popover: React.FC<{
     return list;
   }, [contextualSuggestions, isNewGroup, people, variables, effectiveQuery, lastChip, isException, isOption2, exceptionsLength]);
 
-  // Reset popover state when it opens
+  // Reset popover state when it opens, or pre-fill if editing a chip
   React.useEffect(() => {
     if (open) {
-      setMode('list');
-      setSelectedAttr(null);
-      setQuery("");
-      setDeptValues([]);
-      setLocationValues([]);
-      setLevelValues([]);
-      setTeamValues([]);
-      setCompValue("");
-      setDateValue("");
-      setAddingToPreviousGroup(false);
+      if (chipToEdit) {
+        // Pre-fill form with chip data
+        const parsed = parseChipForEditing(chipToEdit.chip);
+        if (parsed) {
+          const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === parsed.attrKind);
+          if (attrDef) {
+            setSelectedAttr(attrDef);
+            setMode('attr');
+            setQuery("");
+            
+            // Set operator and values based on attribute type
+            if (parsed.attrKind === 'department' && parsed.operator && parsed.values) {
+              setDeptOperator(parsed.operator as 'is any of' | 'is not any of' | 'is all of');
+              setDeptValues(parsed.values);
+            } else if (parsed.attrKind === 'location' && parsed.operator && parsed.values) {
+              setLocationOperator(parsed.operator as 'is any of' | 'is not any of' | 'is all of');
+              setLocationValues(parsed.values);
+            } else if (parsed.attrKind === 'level' && parsed.operator && parsed.values) {
+              setLevelOperator(parsed.operator as 'is any of' | 'is not any of' | 'is all of');
+              setLevelValues(parsed.values);
+            } else if (parsed.attrKind === 'team' && parsed.operator && parsed.values) {
+              setTeamOperator(parsed.operator as 'is any of' | 'is not any of' | 'is all of');
+              setTeamValues(parsed.values);
+            }
+            setAddingToPreviousGroup(false);
+          }
+        }
+      } else {
+        setMode('list');
+        setSelectedAttr(null);
+        setQuery("");
+        setDeptValues([]);
+        setLocationValues([]);
+        setLevelValues([]);
+        setTeamValues([]);
+        setCompValue("");
+        setDateValue("");
+        setAddingToPreviousGroup(false);
+      }
     }
-  }, [open]);
+  }, [open, chipToEdit]);
 
   // Reset focus when list changes
   React.useEffect(() => {
@@ -1769,7 +1828,7 @@ const TemporalityPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; 
 const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = false }) => {
   const [rules, setRules] = useState<RuleGroup>([
     [{ id: "var-1", label: "Department → Product Design", type: "variable" }],
-    [{ id: "var-2", label: "Work location → San Francisco office", type: "variable" }],
+    [{ id: "var-2", label: "Work location is any of San Francisco", type: "variable" }],
     [
       { id: "var-3", label: "Department → Engineering", type: "variable" },
       { id: "var-4", label: "Level → Manager", type: "variable" },
@@ -1788,6 +1847,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   const [shouldOpenAddAnother, setShouldOpenAddAnother] = useState(false);
   const [shouldOpenExceptionAnother, setShouldOpenExceptionAnother] = useState(false);
   const [learnMoreDrawerOpen, setLearnMoreDrawerOpen] = useState(false);
+  const [chipToEdit, setChipToEdit] = useState<{ chip: Chip; groupIdx: number; chipIdx: number } | null>(null);
   
   // Inline search state for Option 2
   const [addMemberQuery, setAddMemberQuery] = useState("");
@@ -1904,6 +1964,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   
   const closePopover = () => {
     setPopover(prev => ({ ...prev, open: false, rect: null, target: null }));
+    setChipToEdit(null);
     // For Option 2, deactivate inline search
     if (isOption2) {
       setAddMemberActive(false);
@@ -1914,6 +1975,38 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
       // Note: chipEditState is managed by handleChipEditBlur and addChipToRule/addException
     }
     // Don't clear lastChip or currentRule here - keep them for next time popover opens
+  };
+
+  // Handle chip click in drawer to edit
+  const handleDrawerChipClick = (chip: Chip, groupIdx: number, chipIdx: number) => {
+    const parsed = parseChipForEditing(chip);
+    if (!parsed) return;
+    
+    // Close drawer
+    setLearnMoreDrawerOpen(false);
+    
+    // Find the attribute definition
+    const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === parsed.attrKind);
+    if (!attrDef) return;
+    
+    // Store chip to edit info
+    setChipToEdit({ chip, groupIdx, chipIdx });
+    
+    // Open popover with attribute form
+    const target = { groupIdx, chipIdx };
+    const targetGroup = rules[groupIdx] || [];
+    const currentRule = targetGroup;
+    
+    // Create a dummy rect for the popover (will be positioned by the popover component)
+    const rect = new DOMRect(0, 0, 0, 0);
+    
+    setPopover({
+      open: true,
+      rect,
+      target,
+      currentRule,
+      isException: false
+    });
   };
   
   // Handler for chip edit input changes
@@ -2491,6 +2584,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         open={popover.open}
         anchorRect={popover.rect}
         onClose={closePopover}
+        chipToEdit={chipToEdit}
         onSelect={(chip, usePreviousGroup, saveAndAddAnother) => {
           if (popover.isException) {
             // For exceptions, handle the same way as rules
@@ -2512,6 +2606,22 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               // Add as a new exception group (OR)
               addException(chip);
             }
+          } else if (chipToEdit) {
+            // If we're editing a chip from the drawer, replace it instead of adding
+            setRules((prev) => {
+              const newRules = prev.map((group, gIdx) => {
+                if (gIdx === chipToEdit.groupIdx) {
+                  return group.map((c, cIdx) => 
+                    cIdx === chipToEdit.chipIdx ? chip : c
+                  );
+                }
+                return group;
+              });
+              return newRules;
+            });
+            setChipToEdit(null);
+            closePopover();
+            return;
           } else if (usePreviousGroup && popover.currentRule) {
             // Selection from "Common filters (AND)" - add as AND to the previous chip
             // Find the previous group index (the last group that exists)
@@ -2661,7 +2771,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                 {chipIdx === 0 && groupIdx === 0 ? (
                                   <>
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}></div>
-                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                    <div 
+                                      className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)] cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors"
+                                      onClick={() => handleDrawerChipClick(chip, groupIdx, chipIdx)}
+                                    >
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
                                   </>
@@ -2670,7 +2783,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
                                       <span className="text-xs font-medium text-[#252528]">OR</span>
                                     </div>
-                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                    <div 
+                                      className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)] cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors"
+                                      onClick={() => handleDrawerChipClick(chip, groupIdx, chipIdx)}
+                                    >
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
                                   </>
@@ -2680,7 +2796,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                                     <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
                                       <span className="text-xs font-medium text-[#252528]">AND</span>
                                     </div>
-                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                    <div 
+                                      className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)] cursor-pointer hover:bg-[rgba(0,0,0,0.1)] transition-colors"
+                                      onClick={() => handleDrawerChipClick(chip, groupIdx, chipIdx)}
+                                    >
                                       <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
                                   </>
