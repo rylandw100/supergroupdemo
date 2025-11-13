@@ -2633,15 +2633,45 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                     <span className="text-sm text-[#202022]">Country is United States</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    This rule is coming from the Time off admin
+                    This rule is coming from the country filter in Time off policies
                   </p>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-semibold text-[#202022] mb-2">Scope and conditions</h3>
-                  <p className="text-sm text-[#202022]">
+                  <p className="text-sm text-[#202022] mb-3">
                     Employees who meet the scope requirements and satisfy any of the defined conditions will be added to the group.
                   </p>
+                  {rules.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-[#202022] mb-2">Match any of the following:</p>
+                      <div className="space-y-2">
+                        {rules.map((group, groupIdx) => (
+                          <div key={groupIdx} className="flex items-start gap-2">
+                            {groupIdx > 0 && (
+                              <div className="flex items-center justify-center h-6 px-2 bg-white rounded-md border border-[rgba(0,0,0,0.1)] shrink-0 mt-0.5">
+                                <span className="text-xs font-medium text-[#252528]">OR</span>
+                              </div>
+                            )}
+                            <div className="flex flex-wrap items-center gap-1 flex-1">
+                              {group.map((chip, chipIdx) => (
+                                <React.Fragment key={chip.id}>
+                                  {chipIdx > 0 && (
+                                    <div className="flex items-center justify-center h-6 px-2 bg-white rounded-md border border-[rgba(0,0,0,0.1)] shrink-0">
+                                      <span className="text-xs font-medium text-[#252528]">AND</span>
+                                    </div>
+                                  )}
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                    <span className="text-xs text-[#202022]">{chip.label}</span>
+                                  </div>
+                                </React.Fragment>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
