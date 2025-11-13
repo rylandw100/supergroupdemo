@@ -2605,14 +2605,18 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Temporality setting</h3>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">
+                    <span className="mr-2">1.</span>Temporality setting
+                  </h3>
                   <p className="text-sm text-[#202022]">
                     We start by checking the temporality setting. This group evaluates membership in real time.
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Employment state setting</h3>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">
+                    <span className="mr-2">2.</span>Employment state setting
+                  </h3>
                   <p className="text-sm text-[#202022] mb-3">
                     Next, we identify the total pool of employees eligible for assessment based on their employment state.
                   </p>
@@ -2625,7 +2629,9 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Pre-existing rules</h3>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">
+                    <span className="mr-2">3.</span>Pre-existing rules
+                  </h3>
                   <p className="text-sm text-[#202022] mb-3">
                     We then review any existing rules that may affect whether an employee can be added to the group.
                   </p>
@@ -2638,48 +2644,50 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Scope and conditions</h3>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">
+                    <span className="mr-2">4.</span>Scope and conditions
+                  </h3>
                   <p className="text-sm text-[#202022] mb-3">
                     Employees who meet the scope requirements and satisfy any of the defined conditions will be added to the group.
                   </p>
                   {rules.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-[#202022] mb-2">Match any of the following:</p>
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         {rules.map((group, groupIdx) => (
-                          <div key={groupIdx} className="flex flex-col gap-1">
-                            {groupIdx > 0 && (
-                              <div className="flex items-center justify-center h-6 px-2 shrink-0">
-                                <span className="text-xs font-medium text-[#252528]">OR</span>
-                              </div>
-                            )}
-                            {group.length === 1 ? (
-                              <div className="w-full px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
-                                <span className="text-xs text-[#202022]">{group[0].label}</span>
-                              </div>
-                            ) : (
-                              group.map((chip, chipIdx) => (
-                                <React.Fragment key={chip.id}>
-                                  {chipIdx === 0 ? (
-                                    <div style={{ paddingLeft: '32px' }}>
-                                      <div className="w-full px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
-                                        <span className="text-xs text-[#202022]">{chip.label}</span>
-                                      </div>
+                          <React.Fragment key={groupIdx}>
+                            {group.map((chip, chipIdx) => (
+                              <div key={chip.id} className="flex items-center" style={{ gap: '8px' }}>
+                                {chipIdx === 0 && groupIdx === 0 ? (
+                                  <>
+                                    <div style={{ width: '32px', flexShrink: 0 }}></div>
+                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                      <span className="text-xs text-[#202022]">{chip.label}</span>
                                     </div>
-                                  ) : (
-                                    <div className="flex items-center" style={{ paddingLeft: '32px', gap: '8px' }}>
-                                      <div className="flex items-center justify-center h-6 shrink-0">
-                                        <span className="text-xs font-medium text-[#252528]">AND</span>
-                                      </div>
-                                      <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
-                                        <span className="text-xs text-[#202022]">{chip.label}</span>
-                                      </div>
+                                  </>
+                                ) : chipIdx === 0 ? (
+                                  <>
+                                    <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
+                                      <span className="text-xs font-medium text-[#252528]">OR</span>
                                     </div>
-                                  )}
-                                </React.Fragment>
-                              ))
-                            )}
-                          </div>
+                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                      <span className="text-xs text-[#202022]">{chip.label}</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={{ width: '32px', flexShrink: 0 }}></div>
+                                    <div className="flex items-center justify-center shrink-0" style={{ width: '24px' }}>
+                                      <span className="text-xs font-medium text-[#252528]">AND</span>
+                                    </div>
+                                    <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                      <span className="text-xs text-[#202022]">{chip.label}</span>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </React.Fragment>
                         ))}
                       </div>
                     </div>
@@ -2687,7 +2695,9 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-semibold text-[#202022] mb-2">Exclusions</h3>
+                  <h3 className="text-sm font-semibold text-[#202022] mb-2">
+                    <span className="mr-2">5.</span>Exclusions
+                  </h3>
                   <p className="text-sm text-[#202022]">
                     Finally, any individuals or groups listed as exclusions will be removed.
                   </p>
