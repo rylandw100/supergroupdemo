@@ -418,7 +418,8 @@ const Popover: React.FC<{
   isOption2?: boolean;
   isException?: boolean;
   exceptionsLength?: number;
-}> = ({ open, anchorRect, onClose, onSelect, lastChip, isNewGroup = false, currentRule = [], previousGroupIdx, externalQuery, hideSearchBar = false, isOption2 = false, isException = false, exceptionsLength = 0 }) => {
+  chipToEdit?: { chip: Chip; groupIdx: number; chipIdx: number } | null;
+}> = ({ open, anchorRect, onClose, onSelect, lastChip, isNewGroup = false, currentRule = [], previousGroupIdx, externalQuery, hideSearchBar = false, isOption2 = false, isException = false, exceptionsLength = 0, chipToEdit = null }) => {
   const [query, setQuery] = useState("");
   const effectiveQuery = externalQuery !== undefined ? externalQuery : query;
   const [mode, setMode] = useState<'list' | 'attr'>('list');
