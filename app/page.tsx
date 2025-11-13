@@ -2647,26 +2647,38 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                       <p className="text-xs font-medium text-[#202022] mb-2">Match any of the following:</p>
                       <div className="space-y-2">
                         {rules.map((group, groupIdx) => (
-                          <div key={groupIdx} className="flex items-start gap-2">
+                          <div key={groupIdx} className="flex flex-col gap-1">
                             {groupIdx > 0 && (
-                              <div className="flex items-center justify-center h-6 px-2 bg-white rounded-md border border-[rgba(0,0,0,0.1)] shrink-0 mt-0.5">
+                              <div className="flex items-center justify-center h-6 px-2 shrink-0">
                                 <span className="text-xs font-medium text-[#252528]">OR</span>
                               </div>
                             )}
-                            <div className="flex flex-wrap items-center gap-1 flex-1">
-                              {group.map((chip, chipIdx) => (
+                            {group.length === 1 ? (
+                              <div className="w-full px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                <span className="text-xs text-[#202022]">{group[0].label}</span>
+                              </div>
+                            ) : (
+                              group.map((chip, chipIdx) => (
                                 <React.Fragment key={chip.id}>
-                                  {chipIdx > 0 && (
-                                    <div className="flex items-center justify-center h-6 px-2 bg-white rounded-md border border-[rgba(0,0,0,0.1)] shrink-0">
-                                      <span className="text-xs font-medium text-[#252528]">AND</span>
+                                  {chipIdx === 0 ? (
+                                    <div style={{ paddingLeft: '32px' }}>
+                                      <div className="w-full px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                        <span className="text-xs text-[#202022]">{chip.label}</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center" style={{ paddingLeft: '32px', gap: '8px' }}>
+                                      <div className="flex items-center justify-center h-6 shrink-0">
+                                        <span className="text-xs font-medium text-[#252528]">AND</span>
+                                      </div>
+                                      <div className="flex-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
+                                        <span className="text-xs text-[#202022]">{chip.label}</span>
+                                      </div>
                                     </div>
                                   )}
-                                  <div className="inline-flex items-center gap-1 px-2 py-1 bg-[rgba(0,0,0,0.05)] rounded-md border border-[rgba(0,0,0,0.1)]">
-                                    <span className="text-xs text-[#202022]">{chip.label}</span>
-                                  </div>
                                 </React.Fragment>
-                              ))}
-                            </div>
+                              ))
+                            )}
                           </div>
                         ))}
                       </div>
