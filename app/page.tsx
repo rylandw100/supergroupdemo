@@ -2911,21 +2911,25 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         chipToEdit={chipToEdit}
         onOpenPlusIconPopover={() => {
           // Find the last chip's + icon and open popover there
-          if (previousGroupIdx !== undefined && previousGroupIdx >= 0) {
+          const prevGroupIdx = popover.isException 
+            ? (exceptions.length > 0 ? exceptions.length - 1 : undefined)
+            : (rules.length > 0 ? rules.length - 1 : undefined);
+          
+          if (prevGroupIdx !== undefined && prevGroupIdx >= 0) {
             if (popover.isException) {
               // For exceptions, find the exception group's + icon
-              const exceptionContainer = document.querySelector(`[data-exception-group-idx="${previousGroupIdx}"]`) as HTMLElement;
+              const exceptionContainer = document.querySelector(`[data-exception-group-idx="${prevGroupIdx}"]`) as HTMLElement;
               if (exceptionContainer) {
                 const exceptionPlusButton = exceptionContainer.querySelector('[data-plus-button]') as HTMLElement;
                 if (exceptionPlusButton) {
                   const rect = exceptionPlusButton.getBoundingClientRect();
-                  openExceptionPopover(rect, { groupIdx: previousGroupIdx, insertAtEnd: true });
+                  openExceptionPopover(rect, { groupIdx: prevGroupIdx, insertAtEnd: true });
                 }
               }
             } else {
               // For rules, find the rule group's + icon
               // Make sure we're not selecting an exception group
-              const allRulePills = document.querySelectorAll(`[data-group-idx="${previousGroupIdx}"]`);
+              const allRulePills = document.querySelectorAll(`[data-group-idx="${prevGroupIdx}"]`);
               let plusButton: HTMLElement | null = null;
               for (const pill of Array.from(allRulePills)) {
                 // Check if this pill is not inside an exception container
@@ -2936,7 +2940,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               }
               if (plusButton) {
                 const rect = plusButton.getBoundingClientRect();
-                openPopover(rect, { groupIdx: previousGroupIdx, insertAtEnd: true });
+                openPopover(rect, { groupIdx: prevGroupIdx, insertAtEnd: true });
               }
             }
           }
