@@ -2707,7 +2707,12 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               }}
             >
               {exceptions.length > 0 && exceptions.some(group => group.length > 0) && (
-                <span className="text-[14px] font-medium leading-[20px] text-[#252528]">Except:</span>
+                <span 
+                  className="text-[14px] font-medium leading-[20px] text-[#252528]"
+                  style={{ marginTop: isOption2 ? '16px' : '0' }}
+                >
+                  Except:
+                </span>
               )}
               {exceptions.map((exceptionGroup, groupIdx) => (
                 exceptionGroup.length > 0 && (
