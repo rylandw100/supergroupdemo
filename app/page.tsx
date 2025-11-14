@@ -840,7 +840,7 @@ const Popover: React.FC<{
   };
 
   return (
-    <div style={style} ref={containerRef} className="rounded-2xl border bg-white shadow-xl">
+    <div style={style} ref={containerRef} data-popover-container className="rounded-2xl border bg-white shadow-xl">
       {(!hideSearchBar || mode === 'attr') && (
         <div className="flex items-center gap-2 border-b p-3">
           {mode === 'attr' ? (
@@ -2355,6 +2355,45 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
     }
   }, [shouldOpenExceptionAnother, popover.open]);
 
+  // In Option 2, handle clicks outside the popover to close it and deactivate inputs
+  React.useEffect(() => {
+    if (!isOption2 || !popover.open) return;
+    
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      // Check if click is on the popover container
+      const popoverElement = document.querySelector('[data-popover-container]');
+      if (popoverElement && popoverElement.contains(target)) {
+        return;
+      }
+      // Check if click is on the input elements or their containers
+      if (addMemberInputRef.current && (addMemberInputRef.current === target || addMemberInputRef.current.contains(target))) {
+        return;
+      }
+      if (excludeInputRef.current && (excludeInputRef.current === target || excludeInputRef.current.contains(target))) {
+        return;
+      }
+      // Check if click is on clickable spans
+      const clickedAddSpan = (target as Element).closest('[data-click-to-add]');
+      const clickedExcludeSpan = (target as Element).closest('[data-click-to-exclude]');
+      if (clickedAddSpan || clickedExcludeSpan) {
+        return;
+      }
+      // Click is outside - close popover and deactivate inputs
+      closePopover();
+    }
+    
+    // Use a small delay to ensure this handler runs after the popover's internal handler
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside, true);
+    }, 0);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, [isOption2, popover.open, closePopover]);
+
   const removeException = (groupIdx: number, chipIdx: number) => {
     setExceptions((prev) => removeChipPure(prev, groupIdx, chipIdx));
   };
@@ -2469,7 +2508,8 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                     if (popover.open) {
                       return;
                     }
-                    if (!addMemberQuery.trim()) {
+                    // In Option 2, if popover is closed and query is empty, deactivate input
+                    if (isOption2 && !addMemberQuery.trim()) {
                       setAddMemberActive(false);
                       closePopover();
                     }
