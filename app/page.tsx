@@ -2723,13 +2723,13 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
       </div>
 
       {isOption2 && rules.length > 0 && (
-        <div className="flex items-start justify-between pt-4" style={{ marginLeft: '24px', marginRight: '24px' }}>
-          <div className="text-sm text-muted-foreground">
-            <span className="text-[#202022]">
+        <div className="flex items-start justify-between pt-4">
+          <div className="text-xs text-muted-foreground">
+            <span className="text-[#6F6F72]">
               This group includes only active or recently hired employees in the United States who meet any of the above conditions, updated in real time.{" "}
               <button
                 onClick={() => setLearnMoreDrawerOpen(true)}
-                className="text-[#202022] underline hover:no-underline"
+                className="text-[#6F6F72] underline hover:no-underline"
               >
                 Learn more
               </button>
@@ -2741,7 +2741,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
             title="Preview people"
           >
             <Eye className="h-3 w-3 text-[#202022]" />
-            <span className="text-sm text-[#202022]">{memberCount} members</span>
+            <span className="text-xs text-[#202022]">{memberCount} members</span>
           </button>
         </div>
       )}
