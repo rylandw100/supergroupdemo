@@ -2393,30 +2393,35 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         <div className="p-6">
         <div 
           className="flex flex-wrap items-center gap-2" 
-          style={rules.length === 0 ? { paddingBottom: '32px' } : undefined}
+          style={rules.length === 0 ? { paddingBottom: '32px', minHeight: '40px' } : isOption2 ? { minHeight: '40px' } : undefined}
           onClick={(e) => {
-            // Only activate if clicking directly on the container or the text, not on chips
-            if (isOption2 && !addMemberActive && (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-click-to-add]'))) {
-              setAddMemberActive(true);
-              setAddMemberQuery("");
-              // Set up pending popover target
-              setPendingPopoverTarget({
-                target: { groupIdx: rules.length, insertAtEnd: true },
-                currentRule: []
-              });
-              // Focus and open popover after a brief delay
-              setTimeout(() => {
-                addMemberInputRef.current?.focus();
-                if (addMemberInputRef.current) {
-                  const rect = addMemberInputRef.current.getBoundingClientRect();
-                  openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
-                }
-              }, 0);
+            // Only activate if clicking directly on the container or empty space, not on chips
+            // In Option 2, make the entire container clickable
+            if (isOption2 && !addMemberActive) {
+              // Check if click is on a chip or chip-related element
+              const clickedChip = (e.target as HTMLElement).closest('[data-chip-container]');
+              if (!clickedChip) {
+                setAddMemberActive(true);
+                setAddMemberQuery("");
+                // Set up pending popover target
+                setPendingPopoverTarget({
+                  target: { groupIdx: rules.length, insertAtEnd: true },
+                  currentRule: []
+                });
+                // Focus and open popover after a brief delay
+                setTimeout(() => {
+                  addMemberInputRef.current?.focus();
+                  if (addMemberInputRef.current) {
+                    const rect = addMemberInputRef.current.getBoundingClientRect();
+                    openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                  }
+                }, 0);
+              }
             }
           }}
         >
           {rules.map((group, groupIdx) => (
-            <div key={groupIdx} onClick={(e) => e.stopPropagation()}>
+            <div key={groupIdx} data-chip-container onClick={(e) => e.stopPropagation()}>
               <RulePill
                 rule={group}
                 groupIdx={groupIdx}
@@ -2481,123 +2486,160 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 style={{ height: '24px', minWidth: '320px' }}
                 autoFocus
               />
-            ) : (
+            ) : isOption2 ? (
               <span
                 data-click-to-add
                 className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
               >
                 Click to add member(s)
               </span>
+            ) : (
+              <button
+                data-add-another-group
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                  openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                }}
+                className="group relative inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-all overflow-hidden" 
+                style={{ height: '24px', borderRadius: '6px', border: '1px dashed rgba(0,0,0,0.2)' }}
+              >
+                <UserPlus className="h-3 w-3 text-[#202022] shrink-0" /> 
+                {rules.length === 0 ? (
+                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] whitespace-nowrap">Add member(s)</span>
+                ) : (
+                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">ADD</span>
+                )}
+              </button>
             )}
           </div>
         </div>
 
         {rules.length > 0 && (
-        <div className="pt-8">
-          <div 
-            className="flex flex-wrap items-center gap-2"
-            onClick={(e) => {
-              // Only activate if clicking directly on the container or the text, not on chips
-              if (isOption2 && !excludeActive && (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-click-to-exclude]'))) {
-                setExcludeActive(true);
-                setExcludeQuery("");
-                // Set up pending popover target
-                setPendingPopoverTarget({
-                  target: { groupIdx: exceptions.length, insertAtEnd: true },
-                  currentRule: []
-                });
-                // Focus and open popover after a brief delay
-                setTimeout(() => {
-                  excludeInputRef.current?.focus();
-                  if (excludeInputRef.current) {
-                    const rect = excludeInputRef.current.getBoundingClientRect();
-                    openExceptionPopover(rect);
-                  }
-                }, 0);
-              }
-            }}
-          >
-            {exceptions.length > 0 && exceptions.some(group => group.length > 0) && (
-              <span className="text-[14px] font-medium leading-[20px] text-[#252528]">Except:</span>
-            )}
-            {exceptions.map((exceptionGroup, groupIdx) => (
-              exceptionGroup.length > 0 && (
-                <div key={groupIdx} onClick={(e) => e.stopPropagation()}>
-                  <RulePill
-                    rule={exceptionGroup}
-                    groupIdx={groupIdx}
-                    onRemoveAt={(chipIdx) => removeException(groupIdx, chipIdx)}
-                    onAddAtEnd={(rect) => openExceptionPopover(rect, { groupIdx, insertAtEnd: true })}
-                    onAddAfterChip={isOption2 ? (rect, chipIdx) => openExceptionPopover(rect, { groupIdx, chipIdx }) : undefined}
-                    isOption2={isOption2}
-                    chipEditState={chipEditState?.isException && chipEditState.groupIdx === groupIdx ? chipEditState : null}
-                    onChipEditChange={handleChipEditChange}
-                    onChipEditBlur={handleChipEditBlur}
-                    onChipEditKeyDown={handleChipEditKeyDown}
-                    getChipEditInputRef={(key) => getChipEditInputRef(`exception-${key}`)}
-                  />
-                </div>
-              )
-            ))}
-            <div className="flex-shrink-0" style={{ minWidth: '70px' }} onClick={(e) => e.stopPropagation()}>
-              {isOption2 && excludeActive ? (
-                <input
-                  ref={excludeInputRef}
-                  value={excludeQuery}
-                  onChange={(e) => {
-                    setExcludeQuery(e.target.value);
-                    // Open popover when user starts typing
-                    if (e.target.value && !popover.open && pendingPopoverTarget) {
-                      const rect = excludeInputRef.current?.getBoundingClientRect() || new DOMRect();
-                      setPopover({ 
-                        open: true, 
-                        rect, 
-                        target: pendingPopoverTarget.target, 
-                        currentRule: pendingPopoverTarget.currentRule || [],
-                        isException: true
-                      });
-                    }
-                    // Update popover position if already open
-                    if (excludeInputRef.current && popover.open) {
-                      const rect = excludeInputRef.current.getBoundingClientRect();
-                      setPopover(prev => ({ ...prev, rect }));
-                    }
-                  }}
-                  onBlur={(e) => {
-                    // Delay blur check to allow click events to fire first
+        <>
+          <div className="pt-8 border-t" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+            <div 
+              className="flex flex-wrap items-center gap-2"
+              onClick={(e) => {
+                // Only activate if clicking directly on the container or empty space, not on chips
+                // In Option 2, make the entire container clickable
+                if (isOption2 && !excludeActive) {
+                  // Check if click is on a chip or chip-related element
+                  const clickedChip = (e.target as HTMLElement).closest('[data-exception-chip-container]');
+                  if (!clickedChip) {
+                    setExcludeActive(true);
+                    setExcludeQuery("");
+                    // Set up pending popover target
+                    setPendingPopoverTarget({
+                      target: { groupIdx: exceptions.length, insertAtEnd: true },
+                      currentRule: []
+                    });
+                    // Focus and open popover after a brief delay
                     setTimeout(() => {
-                      // Don't close if popover is still open (user clicked on an item)
-                      if (popover.open) {
-                        return;
+                      excludeInputRef.current?.focus();
+                      if (excludeInputRef.current) {
+                        const rect = excludeInputRef.current.getBoundingClientRect();
+                        openExceptionPopover(rect);
                       }
-                      if (!excludeQuery.trim()) {
+                    }, 0);
+                  }
+                }
+              }}
+            >
+              {exceptions.length > 0 && exceptions.some(group => group.length > 0) && (
+                <span className="text-[14px] font-medium leading-[20px] text-[#252528]">Except:</span>
+              )}
+              {exceptions.map((exceptionGroup, groupIdx) => (
+                exceptionGroup.length > 0 && (
+                  <div key={groupIdx} data-exception-chip-container onClick={(e) => e.stopPropagation()}>
+                    <RulePill
+                      rule={exceptionGroup}
+                      groupIdx={groupIdx}
+                      onRemoveAt={(chipIdx) => removeException(groupIdx, chipIdx)}
+                      onAddAtEnd={(rect) => openExceptionPopover(rect, { groupIdx, insertAtEnd: true })}
+                      onAddAfterChip={isOption2 ? (rect, chipIdx) => openExceptionPopover(rect, { groupIdx, chipIdx }) : undefined}
+                      isOption2={isOption2}
+                      chipEditState={chipEditState?.isException && chipEditState.groupIdx === groupIdx ? chipEditState : null}
+                      onChipEditChange={handleChipEditChange}
+                      onChipEditBlur={handleChipEditBlur}
+                      onChipEditKeyDown={handleChipEditKeyDown}
+                      getChipEditInputRef={(key) => getChipEditInputRef(`exception-${key}`)}
+                    />
+                  </div>
+                )
+              ))}
+              <div className="flex-shrink-0" style={{ minWidth: '70px' }} onClick={(e) => e.stopPropagation()}>
+                {isOption2 && excludeActive ? (
+                  <input
+                    ref={excludeInputRef}
+                    value={excludeQuery}
+                    onChange={(e) => {
+                      setExcludeQuery(e.target.value);
+                      // Open popover when user starts typing
+                      if (e.target.value && !popover.open && pendingPopoverTarget) {
+                        const rect = excludeInputRef.current?.getBoundingClientRect() || new DOMRect();
+                        setPopover({ 
+                          open: true, 
+                          rect, 
+                          target: pendingPopoverTarget.target, 
+                          currentRule: pendingPopoverTarget.currentRule || [],
+                          isException: true
+                        });
+                      }
+                      // Update popover position if already open
+                      if (excludeInputRef.current && popover.open) {
+                        const rect = excludeInputRef.current.getBoundingClientRect();
+                        setPopover(prev => ({ ...prev, rect }));
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Delay blur check to allow click events to fire first
+                      setTimeout(() => {
+                        // Don't close if popover is still open (user clicked on an item)
+                        if (popover.open) {
+                          return;
+                        }
+                        if (!excludeQuery.trim()) {
+                          setExcludeActive(false);
+                          closePopover();
+                        }
+                      }, 200);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
                         setExcludeActive(false);
                         closePopover();
                       }
-                    }, 200);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setExcludeActive(false);
-                      closePopover();
-                    }
-                  }}
-                  placeholder="Search users, variables, attributes"
-                  className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] px-2 outline-none"
-                  style={{ height: '24px', minWidth: '320px' }}
-                  autoFocus
-                />
-              ) : (
-                <span
-                  data-click-to-exclude
-                  className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
-                >
-                  Click to exclude member(s)
-                </span>
-              )}
+                    }}
+                    placeholder="Search users, variables, attributes"
+                    className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] px-2 outline-none"
+                    style={{ height: '24px', minWidth: '320px' }}
+                    autoFocus
+                  />
+                ) : isOption2 ? (
+                  <span
+                    data-click-to-exclude
+                    className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
+                  >
+                    Click to exclude member(s)
+                  </span>
+                ) : (
+                  <button
+                    data-exclude-button
+                    onClick={(e) => {
+                      const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                      openExceptionPopover(rect);
+                    }}
+                    className="group relative inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-all overflow-hidden" 
+                    style={{ height: '24px', borderRadius: '6px', border: '1px dashed rgba(0,0,0,0.2)' }}
+                  >
+                    <UserMinus className="h-3 w-3 text-[#202022] shrink-0" /> 
+                    <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">EXCLUDE</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </>
         )}
 
         {rules.length > 0 && (
