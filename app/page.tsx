@@ -2723,7 +2723,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
       </div>
 
       {isOption2 && rules.length > 0 && (
-        <div className="mt-4 flex items-start justify-between pt-4" style={{ marginLeft: '24px', marginRight: '24px' }}>
+        <div className="flex items-start justify-between pt-4" style={{ marginLeft: '24px', marginRight: '24px' }}>
           <div className="text-sm text-muted-foreground">
             <span className="text-[#202022]">
               This group includes only active or recently hired employees in the United States who meet any of the above conditions, updated in real time.{" "}
