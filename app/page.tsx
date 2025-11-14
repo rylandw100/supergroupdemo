@@ -2696,7 +2696,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         </>
         )}
 
-        {rules.length > 0 && (
+        {!isOption2 && rules.length > 0 && (
         <div className="mt-4 flex items-start justify-between border-t pt-4">
           <div className="text-sm text-muted-foreground">
             <span className="text-[#202022]">
@@ -2721,6 +2721,30 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         )}
         </div>
       </div>
+
+      {isOption2 && rules.length > 0 && (
+        <div className="mt-4 flex items-start justify-between border-t pt-4">
+          <div className="text-sm text-muted-foreground">
+            <span className="text-[#202022]">
+              This group includes only active or recently hired employees in the United States who meet any of the above conditions, updated in real time.{" "}
+              <button
+                onClick={() => setLearnMoreDrawerOpen(true)}
+                className="text-[#202022] underline hover:no-underline"
+              >
+                Learn more
+              </button>
+            </span>
+          </div>
+          <button 
+            className="inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-colors shrink-0" 
+            style={{ height: '24px', borderRadius: '6px', marginLeft: '24px' }}
+            title="Preview people"
+          >
+            <Eye className="h-3 w-3 text-[#202022]" />
+            <span className="text-sm text-[#202022]">{memberCount} members</span>
+          </button>
+        </div>
+      )}
 
       <Popover
         open={popover.open}
