@@ -657,8 +657,8 @@ const Popover: React.FC<{
     
     const chip = { id: `attr-${selectedAttr.kind}-${Date.now()}`, label, type: 'variable' as const };
     
-    // In Option 2, always behave as if saveAndAddAnother is true
-    const shouldSaveAndAddAnother = isOption2 || saveAndAddAnother;
+    // In Option 1 and Option 2, always behave as if saveAndAddAnother is true
+    const shouldSaveAndAddAnother = true;
     
     // If we're adding from "Add another group" and clicked a common filter, add to previous group
     onSelect(chip, addingToPreviousGroup, shouldSaveAndAddAnother);
@@ -1251,18 +1251,8 @@ const Popover: React.FC<{
           </div>
           {/* Footer actions - outside scrollable area */}
           <div className="flex items-center justify-between gap-2 border-t pt-3 px-3 pb-3 bg-white">
-            {!isOption2 && !chipToEdit && (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={saveAndAddAnother}
-                  onChange={(e) => setSaveAndAddAnother(e.target.checked)}
-                  className="cursor-pointer"
-                />
-                <span className="text-sm text-[#202022]">Save and add another</span>
-              </label>
-            )}
-            {(isOption2 || chipToEdit) && <div />}
+            {/* Hide checkbox - always behave as if "Save and add another" is selected */}
+            <div />
             <div className="flex items-center gap-2" style={{ marginLeft: '18px' }}>
               <button onClick={resetAndClose} className="rounded-lg border px-3 py-1.5 text-sm hover:bg-muted/60">Cancel</button>
               <button 
@@ -3006,9 +2996,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
             }
           }
           
+          // For Option 1 and Option 2, always behave as if "save and add another" is selected
           // For Option 2, saveAndAddAnother behavior is handled by addChipToRule/addException
-          // For non-Option 2, if "save and add another" is checked, set flag to open new popover after state updates
-          if (saveAndAddAnother && popover.rect && !isOption2) {
+          // For Option 1, always set flag to open new popover after state updates
+          if (popover.rect && !isOption2) {
             // Close current popover first
             closePopover();
             if (popover.isException) {
