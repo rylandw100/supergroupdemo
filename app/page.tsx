@@ -2438,7 +2438,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               />
             </div>
           ))}
-          <div className="flex-shrink-0" style={{ minWidth: '70px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="flex-shrink-0" style={{ minWidth: '70px' }}>
             {isOption2 && addMemberActive ? (
               <input
                 ref={addMemberInputRef}
@@ -2489,7 +2489,48 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
             ) : isOption2 ? (
               <span
                 data-click-to-add
-                className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
+                tabIndex={0}
+                role="button"
+                className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!addMemberActive) {
+                    setAddMemberActive(true);
+                    setAddMemberQuery("");
+                    setPendingPopoverTarget({
+                      target: { groupIdx: rules.length, insertAtEnd: true },
+                      currentRule: []
+                    });
+                    setTimeout(() => {
+                      addMemberInputRef.current?.focus();
+                      if (addMemberInputRef.current) {
+                        const rect = addMemberInputRef.current.getBoundingClientRect();
+                        openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                      }
+                    }, 0);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!addMemberActive) {
+                      setAddMemberActive(true);
+                      setAddMemberQuery("");
+                      setPendingPopoverTarget({
+                        target: { groupIdx: rules.length, insertAtEnd: true },
+                        currentRule: []
+                      });
+                      setTimeout(() => {
+                        addMemberInputRef.current?.focus();
+                        if (addMemberInputRef.current) {
+                          const rect = addMemberInputRef.current.getBoundingClientRect();
+                          openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                        }
+                      }, 0);
+                    }
+                  }
+                }}
               >
                 Click to add member(s)
               </span>
@@ -2621,7 +2662,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                   </div>
                 )
               ))}
-              <div className="flex-shrink-0" style={{ minWidth: '70px', marginTop: isOption2 ? '16px' : '0' }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex-shrink-0" style={{ minWidth: '70px', marginTop: isOption2 ? '16px' : '0' }}>
                 {isOption2 && excludeActive ? (
                   <input
                     ref={excludeInputRef}
@@ -2672,7 +2713,48 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 ) : isOption2 ? (
                   <span
                     data-click-to-exclude
-                    className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
+                    tabIndex={0}
+                    role="button"
+                    className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 rounded"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!excludeActive) {
+                        setExcludeActive(true);
+                        setExcludeQuery("");
+                        setPendingPopoverTarget({
+                          target: { groupIdx: exceptions.length, insertAtEnd: true },
+                          currentRule: []
+                        });
+                        setTimeout(() => {
+                          excludeInputRef.current?.focus();
+                          if (excludeInputRef.current) {
+                            const rect = excludeInputRef.current.getBoundingClientRect();
+                            openExceptionPopover(rect);
+                          }
+                        }, 0);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!excludeActive) {
+                          setExcludeActive(true);
+                          setExcludeQuery("");
+                          setPendingPopoverTarget({
+                            target: { groupIdx: exceptions.length, insertAtEnd: true },
+                            currentRule: []
+                          });
+                          setTimeout(() => {
+                            excludeInputRef.current?.focus();
+                            if (excludeInputRef.current) {
+                              const rect = excludeInputRef.current.getBoundingClientRect();
+                              openExceptionPopover(rect);
+                            }
+                          }, 0);
+                        }
+                      }
+                    }}
                   >
                     Click to exclude member(s)
                   </span>
