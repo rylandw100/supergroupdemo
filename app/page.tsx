@@ -2391,9 +2391,32 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         </div>
         
         <div className="p-6">
-        <div className="flex flex-wrap items-center gap-2" style={rules.length === 0 ? { paddingBottom: '32px' } : undefined}>
+        <div 
+          className="flex flex-wrap items-center gap-2" 
+          style={rules.length === 0 ? { paddingBottom: '32px' } : undefined}
+          onClick={(e) => {
+            // Only activate if clicking directly on the container or the text, not on chips
+            if (isOption2 && !addMemberActive && (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-click-to-add]'))) {
+              setAddMemberActive(true);
+              setAddMemberQuery("");
+              // Set up pending popover target
+              setPendingPopoverTarget({
+                target: { groupIdx: rules.length, insertAtEnd: true },
+                currentRule: []
+              });
+              // Focus and open popover after a brief delay
+              setTimeout(() => {
+                addMemberInputRef.current?.focus();
+                if (addMemberInputRef.current) {
+                  const rect = addMemberInputRef.current.getBoundingClientRect();
+                  openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                }
+              }, 0);
+            }
+          }}
+        >
           {rules.map((group, groupIdx) => (
-            <div key={groupIdx}>
+            <div key={groupIdx} onClick={(e) => e.stopPropagation()}>
               <RulePill
                 rule={group}
                 groupIdx={groupIdx}
@@ -2410,7 +2433,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               />
             </div>
           ))}
-          <div className="flex-shrink-0" style={{ minWidth: '70px' }}>
+          <div className="flex-shrink-0" style={{ minWidth: '70px' }} onClick={(e) => e.stopPropagation()}>
             {isOption2 && addMemberActive ? (
               <input
                 ref={addMemberInputRef}
@@ -2459,35 +2482,47 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 autoFocus
               />
             ) : (
-              <button
-                data-add-another-group
-                onClick={(e) => {
-                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                  openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
-                }}
-                className="group relative inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-all overflow-hidden" 
-                style={{ height: '24px', borderRadius: '6px', border: '1px dashed rgba(0,0,0,0.2)' }}
+              <span
+                data-click-to-add
+                className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
               >
-                <UserPlus className="h-3 w-3 text-[#202022] shrink-0" /> 
-                {rules.length === 0 ? (
-                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] whitespace-nowrap">Add member(s)</span>
-                ) : (
-                  <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">ADD</span>
-                )}
-              </button>
+                Click to add member(s)
+              </span>
             )}
           </div>
         </div>
 
         {rules.length > 0 && (
         <div className="pt-8">
-          <div className="flex flex-wrap items-center gap-2">
+          <div 
+            className="flex flex-wrap items-center gap-2"
+            onClick={(e) => {
+              // Only activate if clicking directly on the container or the text, not on chips
+              if (isOption2 && !excludeActive && (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-click-to-exclude]'))) {
+                setExcludeActive(true);
+                setExcludeQuery("");
+                // Set up pending popover target
+                setPendingPopoverTarget({
+                  target: { groupIdx: exceptions.length, insertAtEnd: true },
+                  currentRule: []
+                });
+                // Focus and open popover after a brief delay
+                setTimeout(() => {
+                  excludeInputRef.current?.focus();
+                  if (excludeInputRef.current) {
+                    const rect = excludeInputRef.current.getBoundingClientRect();
+                    openExceptionPopover(rect);
+                  }
+                }, 0);
+              }
+            }}
+          >
             {exceptions.length > 0 && exceptions.some(group => group.length > 0) && (
               <span className="text-[14px] font-medium leading-[20px] text-[#252528]">Except:</span>
             )}
             {exceptions.map((exceptionGroup, groupIdx) => (
               exceptionGroup.length > 0 && (
-                <div key={groupIdx}>
+                <div key={groupIdx} onClick={(e) => e.stopPropagation()}>
                   <RulePill
                     rule={exceptionGroup}
                     groupIdx={groupIdx}
@@ -2504,67 +2539,63 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 </div>
               )
             ))}
-            {isOption2 && excludeActive ? (
-              <input
-                ref={excludeInputRef}
-                value={excludeQuery}
-                onChange={(e) => {
-                  setExcludeQuery(e.target.value);
-                  // Open popover when user starts typing
-                  if (e.target.value && !popover.open && pendingPopoverTarget) {
-                    const rect = excludeInputRef.current?.getBoundingClientRect() || new DOMRect();
-                    setPopover({ 
-                      open: true, 
-                      rect, 
-                      target: pendingPopoverTarget.target, 
-                      currentRule: pendingPopoverTarget.currentRule || [],
-                      isException: true
-                    });
-                  }
-                  // Update popover position if already open
-                  if (excludeInputRef.current && popover.open) {
-                    const rect = excludeInputRef.current.getBoundingClientRect();
-                    setPopover(prev => ({ ...prev, rect }));
-                  }
-                }}
-                onBlur={(e) => {
-                  // Delay blur check to allow click events to fire first
-                  setTimeout(() => {
-                    // Don't close if popover is still open (user clicked on an item)
-                    if (popover.open) {
-                      return;
+            <div className="flex-shrink-0" style={{ minWidth: '70px' }} onClick={(e) => e.stopPropagation()}>
+              {isOption2 && excludeActive ? (
+                <input
+                  ref={excludeInputRef}
+                  value={excludeQuery}
+                  onChange={(e) => {
+                    setExcludeQuery(e.target.value);
+                    // Open popover when user starts typing
+                    if (e.target.value && !popover.open && pendingPopoverTarget) {
+                      const rect = excludeInputRef.current?.getBoundingClientRect() || new DOMRect();
+                      setPopover({ 
+                        open: true, 
+                        rect, 
+                        target: pendingPopoverTarget.target, 
+                        currentRule: pendingPopoverTarget.currentRule || [],
+                        isException: true
+                      });
                     }
-                    if (!excludeQuery.trim()) {
+                    // Update popover position if already open
+                    if (excludeInputRef.current && popover.open) {
+                      const rect = excludeInputRef.current.getBoundingClientRect();
+                      setPopover(prev => ({ ...prev, rect }));
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // Delay blur check to allow click events to fire first
+                    setTimeout(() => {
+                      // Don't close if popover is still open (user clicked on an item)
+                      if (popover.open) {
+                        return;
+                      }
+                      if (!excludeQuery.trim()) {
+                        setExcludeActive(false);
+                        closePopover();
+                      }
+                    }, 200);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
                       setExcludeActive(false);
                       closePopover();
                     }
-                  }, 200);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') {
-                    setExcludeActive(false);
-                    closePopover();
-                  }
-                }}
-                placeholder="Search users, variables, attributes"
-                className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] px-2 outline-none"
-                style={{ height: '24px', minWidth: '320px' }}
-                autoFocus
-              />
-            ) : (
-              <button
-                data-exclude-button
-                onClick={(e) => {
-                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                  openExceptionPopover(rect);
-                }}
-                className="group relative inline-flex items-center gap-1 px-2 hover:bg-[rgba(0,0,0,0.05)] transition-all overflow-hidden" 
-                style={{ height: '24px', borderRadius: '6px', border: '1px dashed rgba(0,0,0,0.2)' }}
-              >
-                <UserMinus className="h-3 w-3 text-[#202022] shrink-0" /> 
-                <span className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] max-w-0 group-hover:max-w-[100px] opacity-0 group-hover:opacity-100 transition-all duration-200 whitespace-nowrap overflow-hidden">EXCLUDE</span>
-              </button>
-            )}
+                  }}
+                  placeholder="Search users, variables, attributes"
+                  className="text-[13px] leading-[16px] tracking-[0.25px] text-[#202022] px-2 outline-none"
+                  style={{ height: '24px', minWidth: '320px' }}
+                  autoFocus
+                />
+              ) : (
+                <span
+                  data-click-to-exclude
+                  className="text-[13px] leading-[16px] tracking-[0.25px] text-muted-foreground cursor-pointer"
+                >
+                  Click to exclude member(s)
+                </span>
+              )}
+            </div>
           </div>
         </div>
         )}
