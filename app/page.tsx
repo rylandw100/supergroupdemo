@@ -2436,25 +2436,31 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
           onClick={(e) => {
             // Only activate if clicking directly on the container or empty space, not on chips
             // In Option 2, make the entire container clickable
-            if (isOption2 && !addMemberActive) {
+            if (isOption2) {
               // Check if click is on a chip or chip-related element
               const clickedChip = (e.target as HTMLElement).closest('[data-chip-container]');
               if (!clickedChip) {
-                setAddMemberActive(true);
-                setAddMemberQuery("");
-                // Set up pending popover target
-                setPendingPopoverTarget({
-                  target: { groupIdx: rules.length, insertAtEnd: true },
-                  currentRule: []
-                });
-                // Focus and open popover after a brief delay
-                setTimeout(() => {
-                  addMemberInputRef.current?.focus();
-                  if (addMemberInputRef.current) {
-                    const rect = addMemberInputRef.current.getBoundingClientRect();
-                    openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
-                  }
-                }, 0);
+                // If popover is already open, close it
+                if (popover.open && !addMemberActive) {
+                  closePopover();
+                } else if (!addMemberActive) {
+                  // Otherwise, open the popover
+                  setAddMemberActive(true);
+                  setAddMemberQuery("");
+                  // Set up pending popover target
+                  setPendingPopoverTarget({
+                    target: { groupIdx: rules.length, insertAtEnd: true },
+                    currentRule: []
+                  });
+                  // Focus and open popover after a brief delay
+                  setTimeout(() => {
+                    addMemberInputRef.current?.focus();
+                    if (addMemberInputRef.current) {
+                      const rect = addMemberInputRef.current.getBoundingClientRect();
+                      openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                    }
+                  }, 0);
+                }
               }
             }
           }}
