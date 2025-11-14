@@ -490,17 +490,22 @@ const Popover: React.FC<{
   const variables = useMemo(() => filtered.filter((f) => f.type === "variable"), [filtered]);
   const people = useMemo(() => filtered.filter((f) => f.type === "employee"), [filtered]);
 
-  // Build flat list of all options in order matching the rendered UI: Common filters → Operators → Attributes → Employees → Variables
+  // Build flat list of all options in order matching the rendered UI: Operators → Attributes → Employees → Variables
   const flatList = useMemo(() => {
-    const list: Array<{ type: 'suggestion' | 'attribute' | 'employee' | 'variable'; data: any; label: string; disabled?: boolean }> = [];
+    const list: Array<{ type: 'suggestion' | 'attribute' | 'employee' | 'variable'; data: any; label: string; disabled?: boolean; preview?: string }> = [];
     const q = effectiveQuery.trim().toLowerCase();
-    // For exceptions in Option 1, hide suggestions when exceptions are empty
-    const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null && !(isException && !isOption2 && exceptionsLength === 0);
+    // For exceptions in Option 1, hide operators when exceptions are empty
+    const showOperators = contextualSuggestions.length > 0 && !q && lastChip !== null && !(isException && !isOption2 && exceptionsLength === 0);
     
-    // Add common filters (suggestions) - only show when there's no query and lastChip exists
-    if (showSuggestions) {
-      contextualSuggestions.forEach(s => {
-        list.push({ type: 'suggestion', data: s, label: s.label });
+    // Add AND operator - only show when there's no query and lastChip exists
+    if (showOperators && contextualSuggestions.length > 0) {
+      // Use the first suggestion to generate the preview
+      const firstSuggestion = contextualSuggestions[0];
+      list.push({ 
+        type: 'suggestion', 
+        data: { isAndOperator: true, suggestion: firstSuggestion }, 
+        label: 'AND: Add a filter to your last selection',
+        preview: firstSuggestion.preview
       });
     }
     
@@ -690,7 +695,15 @@ const Popover: React.FC<{
         if (!item || item.disabled) return;
 
         if (item.type === 'suggestion') {
-          if (item.data.isOther) {
+          // Handle AND operator
+          if (item.data.isAndOperator && item.data.suggestion) {
+            const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === item.data.suggestion.attributeKind);
+            if (attrDef) {
+              setSelectedAttr(attrDef);
+              setMode('attr');
+              setAddingToPreviousGroup(true);
+            }
+          } else if (item.data.isOther) {
             const attrSection = containerRef.current?.querySelector('[data-section="attributes"]');
             if (attrSection) {
               attrSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -873,7 +886,7 @@ const Popover: React.FC<{
         <div ref={listScrollRef} className="max-h-80 overflow-auto p-2">
           {(() => {
             const q = effectiveQuery.trim().toLowerCase();
-            const showSuggestions = contextualSuggestions.length > 0 && !q && lastChip !== null;
+            const showOperators = contextualSuggestions.length > 0 && !q && lastChip !== null;
             const filteredAttributes = q 
               ? ATTRIBUTE_DEFINITIONS.filter(a => a.label.toLowerCase().includes(q))
               : ATTRIBUTE_DEFINITIONS;
@@ -882,59 +895,35 @@ const Popover: React.FC<{
             
             return (
               <>
-                {showSuggestions ? (
-                  isNewGroup ? (
-                    <Section title="Common filters (AND)" emptyText="No suggestions available.">
-                      {contextualSuggestions.map((suggestion, idx) => {
-                        const flatIdx = currentIdx++;
-                        const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === suggestion.attributeKind);
-                        return (
-                          <SuggestionRow
-                            key={`suggest-${idx}`}
-                            dataIdx={flatIdx}
-                            label={suggestion.label}
-                            preview={suggestion.preview}
-                            attributeKind={suggestion.attributeKind}
-                            focused={focusedIdx === flatIdx}
-                            onMouseEnter={() => setFocusedIdx(flatIdx)}
-                            onClick={() => {
-                              if (attrDef) {
-                                setSelectedAttr(attrDef);
-                                setMode('attr');
-                                setAddingToPreviousGroup(true);
-                              }
-                            }}
-                          />
-                        );
-                      })}
-                    </Section>
-                  ) : (
-                    <Section title="Common filters (AND)" emptyText="No suggestions available.">
-                      {contextualSuggestions.map((suggestion, idx) => {
-                        const flatIdx = currentIdx++;
-                        const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === suggestion.attributeKind);
-                        return (
-                          <SuggestionRow
-                            key={`suggest-${idx}`}
-                            dataIdx={flatIdx}
-                            label={suggestion.label}
-                            preview={suggestion.preview}
-                            attributeKind={suggestion.attributeKind}
-                            focused={focusedIdx === flatIdx}
-                            onMouseEnter={() => setFocusedIdx(flatIdx)}
-                            onClick={() => {
-                              if (attrDef) {
-                                setSelectedAttr(attrDef);
-                                setMode('attr');
-                              }
-                            }}
-                          />
-                        );
-                      })}
-                    </Section>
-                  )
+                {showOperators && contextualSuggestions.length > 0 ? (
+                  <Section title="Operators" emptyText="No operators available.">
+                    {(() => {
+                      const firstSuggestion = contextualSuggestions[0];
+                      const flatIdx = currentIdx++;
+                      const attrDef = ATTRIBUTE_DEFINITIONS.find(a => a.kind === firstSuggestion.attributeKind);
+                      return (
+                        <SuggestionRow
+                          key="and-operator"
+                          dataIdx={flatIdx}
+                          label="AND: Add a filter to your last selection"
+                          preview={firstSuggestion.preview}
+                          attributeKind={firstSuggestion.attributeKind}
+                          focused={focusedIdx === flatIdx}
+                          onMouseEnter={() => setFocusedIdx(flatIdx)}
+                          onClick={() => {
+                            if (attrDef) {
+                              setSelectedAttr(attrDef);
+                              setMode('attr');
+                              // Set addingToPreviousGroup to true to add as AND to previous chip
+                              setAddingToPreviousGroup(true);
+                            }
+                          }}
+                        />
+                      );
+                    })()}
+                  </Section>
                 ) : null}
-                {isNewGroup && showSuggestions && (
+                {isNewGroup && showOperators && (
                   <div className="border-t border-[rgba(0,0,0,0.1)] my-2"></div>
                 )}
                 <div data-section="attributes">
@@ -2883,11 +2872,11 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
           if (popover.isException) {
             // For exceptions, handle the same way as rules
             if (usePreviousGroup && popover.currentRule) {
-              // Selection from "Common filters (AND)" - add as AND to the previous exception group
-              const prevGroupIdx = exceptions.length > 0 ? exceptions.length - 1 : 0;
-              addException(chip, { groupIdx: prevGroupIdx, insertAtEnd: true });
-            } else if (popover.target) {
-              // For Option 2, if we're adding from excludeActive input and selection is NOT from "Common filters (AND)",
+            // Selection from "Operators" (AND operator) - add as AND to the previous exception group
+            const prevGroupIdx = exceptions.length > 0 ? exceptions.length - 1 : 0;
+            addException(chip, { groupIdx: prevGroupIdx, insertAtEnd: true });
+          } else if (popover.target) {
+            // For Option 2, if we're adding from excludeActive input and selection is NOT from "Operators",
               // add as a new chip (OR) instead of using the target
               if (isOption2 && excludeActive && !usePreviousGroup && popover.target.insertAtEnd) {
                 // Add as a new exception group (OR)
@@ -2917,12 +2906,12 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
             closePopover();
             return;
           } else if (usePreviousGroup && popover.currentRule) {
-            // Selection from "Common filters (AND)" - add as AND to the previous chip
+            // Selection from "Operators" (AND operator) - add as AND to the previous chip
             // Find the previous group index (the last group that exists)
             const prevGroupIdx = rules.length > 0 ? rules.length - 1 : 0;
             addChipToRule(chip, { groupIdx: prevGroupIdx, insertAtEnd: true });
           } else if (popover.target) {
-            // For Option 2, if selection is NOT from "Common filters (AND)" and we're adding from "Add member(s)" input,
+            // For Option 2, if selection is NOT from "Operators" and we're adding from "Add member(s)" input,
             // add as a new chip (OR) instead of AND
             if (isOption2 && !usePreviousGroup && (addMemberActive || (chipEditState && !chipEditState.isException))) {
               // If popover.target has chipIdx (not insertAtEnd), it means we were in chip edit mode
