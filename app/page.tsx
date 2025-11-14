@@ -2516,7 +2516,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
 
         {rules.length > 0 && (
         <>
-          <div className="pt-8 border-t" style={{ borderColor: 'rgba(0,0,0,0.1)' }}>
+          <div className={isOption2 ? "pt-4" : "pt-8"}>
+            {isOption2 && (
+              <div className="border-t" style={{ borderColor: 'rgba(0,0,0,0.1)', marginTop: '32px', marginBottom: '0' }}></div>
+            )}
             <div 
               className="flex flex-wrap items-center gap-2"
               onClick={(e) => {
