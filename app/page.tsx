@@ -2516,11 +2516,62 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
 
         {rules.length > 0 && (
         <>
-          <div className={isOption2 ? "pt-4" : "pt-8"}>
+          <div 
+            className={isOption2 ? "pt-4" : "pt-8"}
+            onClick={(e) => {
+              // In Option 2, clicking above the dividing line should activate "click to add member(s)"
+              if (isOption2 && !addMemberActive && !excludeActive) {
+                // Check if click is in the space above the border (not on the border itself or below it)
+                const clickedBorder = (e.target as HTMLElement).classList.contains('border-t') || 
+                                     (e.target as HTMLElement).closest('.border-t');
+                const clickedExclusionSection = (e.target as HTMLElement).closest('[data-exclusion-section]');
+                if (!clickedBorder && !clickedExclusionSection && e.target === e.currentTarget) {
+                  setAddMemberActive(true);
+                  setAddMemberQuery("");
+                  // Set up pending popover target
+                  setPendingPopoverTarget({
+                    target: { groupIdx: rules.length, insertAtEnd: true },
+                    currentRule: []
+                  });
+                  // Focus and open popover after a brief delay
+                  setTimeout(() => {
+                    addMemberInputRef.current?.focus();
+                    if (addMemberInputRef.current) {
+                      const rect = addMemberInputRef.current.getBoundingClientRect();
+                      openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                    }
+                  }, 0);
+                }
+              }
+            }}
+          >
             {isOption2 && (
-              <div className="border-t" style={{ borderColor: 'rgba(0,0,0,0.1)', marginTop: '32px', marginBottom: '0' }}></div>
+              <div 
+                className="border-t" 
+                style={{ borderColor: 'rgba(0,0,0,0.1)', marginTop: '32px', marginBottom: '0' }}
+                onClick={(e) => {
+                  // Clicking on the border should activate "click to add member(s)"
+                  if (isOption2 && !addMemberActive && !excludeActive) {
+                    e.stopPropagation();
+                    setAddMemberActive(true);
+                    setAddMemberQuery("");
+                    setPendingPopoverTarget({
+                      target: { groupIdx: rules.length, insertAtEnd: true },
+                      currentRule: []
+                    });
+                    setTimeout(() => {
+                      addMemberInputRef.current?.focus();
+                      if (addMemberInputRef.current) {
+                        const rect = addMemberInputRef.current.getBoundingClientRect();
+                        openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                      }
+                    }, 0);
+                  }
+                }}
+              ></div>
             )}
             <div 
+              data-exclusion-section
               className="flex flex-wrap items-center gap-2"
               onClick={(e) => {
                 // Only activate if clicking directly on the container or empty space, not on chips
@@ -2570,7 +2621,7 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                   </div>
                 )
               ))}
-              <div className="flex-shrink-0" style={{ minWidth: '70px' }} onClick={(e) => e.stopPropagation()}>
+              <div className="flex-shrink-0" style={{ minWidth: '70px', marginTop: isOption2 ? '16px' : '0' }} onClick={(e) => e.stopPropagation()}>
                 {isOption2 && excludeActive ? (
                   <input
                     ref={excludeInputRef}
