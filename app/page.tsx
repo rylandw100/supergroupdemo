@@ -2716,7 +2716,13 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               )}
               {exceptions.map((exceptionGroup, groupIdx) => (
                 exceptionGroup.length > 0 && (
-                  <div key={groupIdx} data-exception-chip-container data-exception-group-idx={groupIdx} onClick={(e) => e.stopPropagation()}>
+                  <div 
+                    key={groupIdx} 
+                    data-exception-chip-container 
+                    data-exception-group-idx={groupIdx} 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ marginTop: isOption2 ? '16px' : '0' }}
+                  >
                     <RulePill
                       rule={exceptionGroup}
                       groupIdx={groupIdx}
