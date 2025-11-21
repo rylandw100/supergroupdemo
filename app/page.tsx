@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useRef, useState } from "react";
-import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History, Pencil } from "lucide-react";
+import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History, Pencil, Lightbulb } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // =============================================================
@@ -26,6 +26,16 @@ const EMPLOYEE_OPTIONS = [
   { id: "emp-5", label: "Priya Nair (HRBP)", email: "priya@acme.com", type: "employee" as const },
   { id: "emp-6", label: "Luis Romero (Finance)", email: "luis@acme.com", type: "employee" as const },
 ];
+
+// Employee metadata mapping for tip detection
+const EMPLOYEE_METADATA: Record<string, { department?: string; location?: string; level?: string }> = {
+  "emp-1": { department: undefined, location: undefined, level: undefined }, // Admin • Neuralink
+  "emp-2": { department: "Engineering", location: undefined, level: "Manager" }, // Engineering Manager
+  "emp-3": { department: "Product Design", location: undefined, level: undefined }, // Product Designer
+  "emp-4": { department: "Engineering", location: undefined, level: "Staff IC" }, // Staff Engineer
+  "emp-5": { department: "HR", location: undefined, level: undefined }, // HRBP
+  "emp-6": { department: "Finance", location: undefined, level: undefined }, // Finance
+};
 
 const ATTRIBUTE_DEFINITIONS = [
   { id: "attr-dept", label: "Department", kind: "department" as const },
@@ -253,6 +263,228 @@ function getContextualSuggestions(lastChip: Chip | null, currentRule: Rule = [])
       preview: fullConditionChain ? `${fullConditionChain} AND ${s.preview}` : `${lastChip.label} AND ${s.preview}`,
       attributeKind: getChipType(s.chip), // Store the attribute kind to open the form
     }));
+}
+
+// =============================================================
+// Tip Detection Functions
+// =============================================================
+export type Tip = {
+  id: string;
+  title: string;
+  description: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+};
+
+// Detect similar conditions that can be combined
+function detectSimilarConditions(rules: RuleGroup): Tip | null {
+  // Collect all location conditions (handle both "Work location → X" and "Work location is any of X" formats)
+  const locationConditions: Array<{ chip: Chip; groupIdx: number; chipIdx: number; values: string[]; operator: string }> = [];
+  
+  rules.forEach((rule, groupIdx) => {
+    rule.forEach((chip, chipIdx) => {
+      const chipType = getChipType(chip);
+      if (chipType === "location") {
+        // Try parsing with parseChipForEditing first (handles "is any of" format)
+        const parsed = parseChipForEditing(chip);
+        if (parsed && parsed.values && parsed.values.length > 0) {
+          locationConditions.push({
+            chip,
+            groupIdx,
+            chipIdx,
+            values: parsed.values,
+            operator: parsed.operator || "is any of",
+          });
+        } else {
+          // Try parsing "Work location → X" format
+          const arrowMatch = chip.label.match(/Work location\s*→\s*(.+)/i);
+          if (arrowMatch) {
+            const value = arrowMatch[1].trim();
+            locationConditions.push({
+              chip,
+              groupIdx,
+              chipIdx,
+              values: [value],
+              operator: "is any of",
+            });
+          }
+        }
+      }
+    });
+  });
+
+  // Check if there are multiple location conditions with different values
+  if (locationConditions.length >= 2) {
+    // Group by operator
+    const byOperator = new Map<string, typeof locationConditions>();
+    locationConditions.forEach(cond => {
+      if (!byOperator.has(cond.operator)) {
+        byOperator.set(cond.operator, []);
+      }
+      byOperator.get(cond.operator)!.push(cond);
+    });
+
+    // Check each operator group
+    for (const [operator, conditions] of byOperator) {
+      if (conditions.length >= 2) {
+        // Collect all unique values
+        const allValues = new Set<string>();
+        conditions.forEach(c => c.values.forEach(v => allValues.add(v)));
+        
+        // Check if there are multiple different values that could be combined
+        if (allValues.size > 1) {
+          // Check if they're already combined in any single chip
+          const hasCombined = conditions.some(c => c.values.length > 1);
+          if (!hasCombined) {
+            // Found similar conditions that can be combined
+            const combinedValues = Array.from(allValues).join(", ");
+            return {
+              id: "similar-location",
+              title: "Combine similar conditions",
+              description: `You have multiple "Work location" conditions. Consider combining them into one: "Work location ${operator} ${combinedValues}"`,
+              action: {
+                label: "Learn more",
+                onClick: () => {}, // Will be handled by parent
+              },
+            };
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+// Detect if all people in a department/location/level are added individually
+function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
+  // Collect all employee chips
+  const employeeChips: Array<{ chip: Chip; groupIdx: number; chipIdx: number }> = [];
+  
+  rules.forEach((rule, groupIdx) => {
+    rule.forEach((chip, chipIdx) => {
+      if (chip.type === "employee") {
+        employeeChips.push({ chip, groupIdx, chipIdx });
+      }
+    });
+  });
+
+  if (employeeChips.length < 2) return null;
+
+  // Group employees by department
+  const byDepartment = new Map<string, typeof employeeChips>();
+  employeeChips.forEach(({ chip }) => {
+    const metadata = EMPLOYEE_METADATA[chip.id];
+    if (metadata?.department) {
+      if (!byDepartment.has(metadata.department)) {
+        byDepartment.set(metadata.department, []);
+      }
+      byDepartment.get(metadata.department)!.push({ chip, groupIdx: -1, chipIdx: -1 });
+    }
+  });
+
+  // Check if all employees in a department are present
+  for (const [department, employees] of byDepartment) {
+    // Get all employees in this department from EMPLOYEE_OPTIONS
+    const allEmployeesInDept = EMPLOYEE_OPTIONS.filter(emp => {
+      const metadata = EMPLOYEE_METADATA[emp.id];
+      return metadata?.department === department;
+    });
+
+    if (allEmployeesInDept.length > 0 && employees.length === allEmployeesInDept.length) {
+      // All employees in this department are added
+      return {
+        id: "all-people-dept",
+        title: "Use department filter instead",
+        description: `You've added all people in ${department}. Consider using "Department → ${department}" instead.`,
+        action: {
+          label: "Learn more",
+          onClick: () => {}, // Will be handled by parent
+        },
+      };
+    }
+  }
+
+  // Group employees by location
+  const byLocation = new Map<string, typeof employeeChips>();
+  employeeChips.forEach(({ chip }) => {
+    const metadata = EMPLOYEE_METADATA[chip.id];
+    if (metadata?.location) {
+      if (!byLocation.has(metadata.location)) {
+        byLocation.set(metadata.location, []);
+      }
+      byLocation.get(metadata.location)!.push({ chip, groupIdx: -1, chipIdx: -1 });
+    }
+  });
+
+  // Check if all employees in a location are present
+  for (const [location, employees] of byLocation) {
+    const allEmployeesInLocation = EMPLOYEE_OPTIONS.filter(emp => {
+      const metadata = EMPLOYEE_METADATA[emp.id];
+      return metadata?.location === location;
+    });
+
+    if (allEmployeesInLocation.length > 0 && employees.length === allEmployeesInLocation.length) {
+      return {
+        id: "all-people-location",
+        title: "Use location filter instead",
+        description: `You've added all people in ${location}. Consider using "Work location → ${location}" instead.`,
+        action: {
+          label: "Learn more",
+          onClick: () => {},
+        },
+      };
+    }
+  }
+
+  // Group employees by level
+  const byLevel = new Map<string, typeof employeeChips>();
+  employeeChips.forEach(({ chip }) => {
+    const metadata = EMPLOYEE_METADATA[chip.id];
+    if (metadata?.level) {
+      if (!byLevel.has(metadata.level)) {
+        byLevel.set(metadata.level, []);
+      }
+      byLevel.get(metadata.level)!.push({ chip, groupIdx: -1, chipIdx: -1 });
+    }
+  });
+
+  // Check if all employees at a level are present
+  for (const [level, employees] of byLevel) {
+    const allEmployeesAtLevel = EMPLOYEE_OPTIONS.filter(emp => {
+      const metadata = EMPLOYEE_METADATA[emp.id];
+      return metadata?.level === level;
+    });
+
+    if (allEmployeesAtLevel.length > 0 && employees.length === allEmployeesAtLevel.length) {
+      return {
+        id: "all-people-level",
+        title: "Use level filter instead",
+        description: `You've added all people at ${level} level. Consider using "Level → ${level}" instead.`,
+        action: {
+          label: "Learn more",
+          onClick: () => {},
+        },
+      };
+    }
+  }
+
+  return null;
+}
+
+// Get all tips for the current rules
+function getAllTips(rules: RuleGroup): Tip[] {
+  const tips: Tip[] = [];
+  
+  const similarTip = detectSimilarConditions(rules);
+  if (similarTip) tips.push(similarTip);
+  
+  const allPeopleTip = detectAllPeopleInGroup(rules);
+  if (allPeopleTip) tips.push(allPeopleTip);
+  
+  return tips;
 }
 
 // =============================================================
@@ -1863,6 +2095,70 @@ const TemporalityPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; 
 };
 
 // =============================================================
+// Tips Popover Component
+// =============================================================
+const TipsPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; onClose: () => void; tips: Tip[] }> = ({ open, anchorRect, onClose, tips }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      if (!open) return;
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) onClose();
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open, onClose]);
+
+  if (!open || !anchorRect) return null;
+
+  const style: React.CSSProperties = {
+    position: "fixed",
+    top: anchorRect.bottom + 4,
+    right: window.innerWidth - anchorRect.right,
+    width: 320,
+    zIndex: 50,
+  };
+
+  return (
+    <div style={style} ref={containerRef} className="rounded-lg border bg-white shadow-xl overflow-hidden">
+      <div className="p-3 border-b">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="h-4 w-4 text-[#202022]" />
+          <span className="text-sm font-semibold text-[#202022]">Tips</span>
+        </div>
+      </div>
+      <div className="py-2 max-h-96 overflow-auto">
+        {tips.length === 0 ? (
+          <div className="px-3 py-4 text-center">
+            <p className="text-sm text-muted-foreground">No tips available at this time.</p>
+          </div>
+        ) : (
+          tips.map((tip) => (
+            <div key={tip.id} className="px-3 py-2 hover:bg-[rgba(0,0,0,0.02)] transition-colors">
+              <div className="flex flex-col gap-1">
+                <span className="text-[13px] font-medium leading-[16px] text-[#202022]">{tip.title}</span>
+                <span className="text-[11px] leading-[13px] text-[#6f6f72]">{tip.description}</span>
+                {tip.action && (
+                  <button
+                    onClick={() => {
+                      tip.action?.onClick();
+                      onClose();
+                    }}
+                    className="text-[11px] text-blue-600 hover:text-blue-700 mt-1 text-left"
+                  >
+                    {tip.action.label}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+// =============================================================
 // Supergroup Component (reusable)
 // =============================================================
 const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = false }) => {
@@ -1884,6 +2180,8 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   const [kebabMenuRect, setKebabMenuRect] = useState<DOMRect | null>(null);
   const [temporalityPopoverOpen, setTemporalityPopoverOpen] = useState(false);
   const [temporalityPopoverRect, setTemporalityPopoverRect] = useState<DOMRect | null>(null);
+  const [tipsPopoverOpen, setTipsPopoverOpen] = useState(false);
+  const [tipsPopoverRect, setTipsPopoverRect] = useState<DOMRect | null>(null);
   const [shouldOpenAddAnother, setShouldOpenAddAnother] = useState(false);
   const [shouldOpenExceptionAnother, setShouldOpenExceptionAnother] = useState(false);
   const [learnMoreDrawerOpen, setLearnMoreDrawerOpen] = useState(false);
@@ -2419,11 +2717,12 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   };
 
   const memberCount = useMemo(() => countMembers(rules), [rules]);
+  const tips = useMemo(() => getAllTips(rules), [rules]);
 
   return (
     <>
       <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
-        {/* Header bar with temporality dropdown and kebab menu */}
+        {/* Header bar with temporality dropdown, tips, and kebab menu */}
         <div className="flex items-center justify-between border-b px-3 py-2 rounded-t-2xl" style={{ backgroundColor: '#FAFAFA' }}>
           <button 
             onClick={(e) => {
@@ -2437,16 +2736,29 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
             <span className="text-sm text-[#6F6F72]">evaluated in real time</span>
             <ChevronDown className="h-4 w-4 text-[#202022]" />
           </button>
-          <button 
-            onClick={(e) => {
-              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-              setKebabMenuRect(rect);
-              setKebabMenuOpen(true);
-            }}
-            className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
-          >
-            <MoreVertical className="h-5 w-5 text-[#202022]" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                setTipsPopoverRect(rect);
+                setTipsPopoverOpen(true);
+              }}
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
+              title="Tips"
+            >
+              <Lightbulb className="h-5 w-5 text-[#202022]" />
+            </button>
+            <button 
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                setKebabMenuRect(rect);
+                setKebabMenuOpen(true);
+              }}
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
+            >
+              <MoreVertical className="h-5 w-5 text-[#202022]" />
+            </button>
+          </div>
         </div>
         
         <div className="p-6">
@@ -3054,6 +3366,16 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
         }}
       />
 
+      <TipsPopover
+        open={tipsPopoverOpen}
+        anchorRect={tipsPopoverRect}
+        onClose={() => {
+          setTipsPopoverOpen(false);
+          setTipsPopoverRect(null);
+        }}
+        tips={tips}
+      />
+
       {/* Learn More Drawer */}
       {learnMoreDrawerOpen && (
         <>
@@ -3195,14 +3517,10 @@ export default function Home() {
           This is a form caption. This subtext should explain the purpose of the form, what it takes for a user to fill it out and what value it provides after filling out.
         </p>
 
-        <Tabs defaultValue="option1" className="mt-8">
+        <Tabs defaultValue="option2" className="mt-8">
           <TabsList>
-            <TabsTrigger value="option1">Option 1</TabsTrigger>
             <TabsTrigger value="option2">Option 2</TabsTrigger>
           </TabsList>
-          <TabsContent value="option1">
-            <SupergroupComponent />
-          </TabsContent>
           <TabsContent value="option2">
             <SupergroupComponent isOption2={true} />
           </TabsContent>
