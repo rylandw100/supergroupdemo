@@ -327,7 +327,9 @@ function detectSimilarConditions(rules: RuleGroup): Tip | null {
     });
 
     // Check each operator group
-    for (const [operator, conditions] of byOperator) {
+    const operatorEntries = Array.from(byOperator.entries());
+    for (let i = 0; i < operatorEntries.length; i++) {
+      const [operator, conditions] = operatorEntries[i];
       if (conditions.length >= 2) {
         // Collect all unique values
         const allValues = new Set<string>();
