@@ -388,7 +388,9 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
   });
 
   // Check if all employees in a department are present
-  for (const [department, employees] of byDepartment) {
+  const departmentEntries = Array.from(byDepartment.entries());
+  for (let i = 0; i < departmentEntries.length; i++) {
+    const [department, employees] = departmentEntries[i];
     // Get all employees in this department from EMPLOYEE_OPTIONS
     const allEmployeesInDept = EMPLOYEE_OPTIONS.filter(emp => {
       const metadata = EMPLOYEE_METADATA[emp.id];
@@ -422,7 +424,9 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
   });
 
   // Check if all employees in a location are present
-  for (const [location, employees] of byLocation) {
+  const locationEntries = Array.from(byLocation.entries());
+  for (let i = 0; i < locationEntries.length; i++) {
+    const [location, employees] = locationEntries[i];
     const allEmployeesInLocation = EMPLOYEE_OPTIONS.filter(emp => {
       const metadata = EMPLOYEE_METADATA[emp.id];
       return metadata?.location === location;
@@ -454,7 +458,9 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
   });
 
   // Check if all employees at a level are present
-  for (const [level, employees] of byLevel) {
+  const levelEntries = Array.from(byLevel.entries());
+  for (let i = 0; i < levelEntries.length; i++) {
+    const [level, employees] = levelEntries[i];
     const allEmployeesAtLevel = EMPLOYEE_OPTIONS.filter(emp => {
       const metadata = EMPLOYEE_METADATA[emp.id];
       return metadata?.level === level;
