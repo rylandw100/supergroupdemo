@@ -591,7 +591,7 @@ function getAllTips(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => R
   const tips: Tip[] = [];
   
   const createOnReject = (tipId: string) => () => {
-    setDismissedTips((prev) => new Set([...prev, tipId]));
+    setDismissedTips((prev) => new Set([...Array.from(prev), tipId]));
   };
   
   const similarTip = detectSimilarConditions(rules, setRules, createOnReject("similar-location"));
