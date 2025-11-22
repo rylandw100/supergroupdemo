@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo, useRef, useState } from "react";
-import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History, Pencil, Lightbulb } from "lucide-react";
+import { Plus, X, Search, ArrowLeft, Info, UserMinus, Users, UserPlus, Eye, ChevronDown, MoreVertical, Bookmark, Calendar, History, Pencil, Lightbulb, Check } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // =============================================================
@@ -272,14 +272,12 @@ export type Tip = {
   id: string;
   title: string;
   description: string;
-  action?: {
-    label: string;
-    onClick: () => void;
-  };
+  onAccept: () => void;
+  onReject: () => void;
 };
 
 // Detect similar conditions that can be combined
-function detectSimilarConditions(rules: RuleGroup): Tip | null {
+function detectSimilarConditions(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => RuleGroup) => void, onReject: () => void): Tip | null {
   // Collect all location conditions (handle both "Work location → X" and "Work location is any of X" formats)
   const locationConditions: Array<{ chip: Chip; groupIdx: number; chipIdx: number; values: string[]; operator: string }> = [];
   
@@ -342,14 +340,48 @@ function detectSimilarConditions(rules: RuleGroup): Tip | null {
           if (!hasCombined) {
             // Found similar conditions that can be combined
             const combinedValues = Array.from(allValues).join(", ");
+            const conditionsToRemove = conditions;
+            
             return {
               id: "similar-location",
               title: "Combine similar conditions",
               description: `You have multiple "Work location" conditions. Consider combining them into one: "Work location ${operator} ${combinedValues}"`,
-              action: {
-                label: "Learn more",
-                onClick: () => {}, // Will be handled by parent
+              onAccept: () => {
+                // Remove all the individual location chips and add a combined one
+                setRules((prev) => {
+                  let newRules: RuleGroup = prev.map((rule) => [...rule]);
+                  
+                  // Remove all location condition chips
+                  conditionsToRemove.forEach(({ groupIdx, chipIdx }) => {
+                    if (newRules[groupIdx]) {
+                      newRules[groupIdx] = newRules[groupIdx].filter((_, idx) => idx !== chipIdx);
+                    }
+                  });
+                  
+                  // Add combined chip to the first group that had a location condition
+                  if (conditionsToRemove.length > 0) {
+                    const firstGroupIdx = conditionsToRemove[0].groupIdx;
+                    const combinedChip: Chip = {
+                      id: `var-location-combined-${Date.now()}`,
+                      label: `Work location ${operator} ${combinedValues}`,
+                      type: "variable",
+                    };
+                    
+                    // Clean up empty groups
+                    newRules = newRules.filter((g) => g.length > 0);
+                    
+                    // Add combined chip to the first group (or create new group if needed)
+                    if (newRules.length > 0 && firstGroupIdx < newRules.length) {
+                      newRules[firstGroupIdx] = [...newRules[firstGroupIdx], combinedChip];
+                    } else {
+                      newRules.push([combinedChip]);
+                    }
+                  }
+                  
+                  return newRules.filter((g) => g.length > 0);
+                });
               },
+              onReject,
             };
           }
         }
@@ -361,7 +393,7 @@ function detectSimilarConditions(rules: RuleGroup): Tip | null {
 }
 
 // Detect if all people in a department/location/level are added individually
-function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
+function detectAllPeopleInGroup(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => RuleGroup) => void, onReject: () => void): Tip | null {
   // Collect all employee chips
   const employeeChips: Array<{ chip: Chip; groupIdx: number; chipIdx: number }> = [];
   
@@ -377,13 +409,13 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
 
   // Group employees by department
   const byDepartment = new Map<string, typeof employeeChips>();
-  employeeChips.forEach(({ chip }) => {
+  employeeChips.forEach(({ chip, groupIdx, chipIdx }) => {
     const metadata = EMPLOYEE_METADATA[chip.id];
     if (metadata?.department) {
       if (!byDepartment.has(metadata.department)) {
         byDepartment.set(metadata.department, []);
       }
-      byDepartment.get(metadata.department)!.push({ chip, groupIdx: -1, chipIdx: -1 });
+      byDepartment.get(metadata.department)!.push({ chip, groupIdx, chipIdx });
     }
   });
 
@@ -399,27 +431,51 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
 
     if (allEmployeesInDept.length > 0 && employees.length === allEmployeesInDept.length) {
       // All employees in this department are added
+      const employeeIdsToRemove = new Set(employees.map(e => e.chip.id));
+      
       return {
         id: "all-people-dept",
         title: "Use department filter instead",
         description: `You've added all people in ${department}. Consider using "Department → ${department}" instead.`,
-        action: {
-          label: "Learn more",
-          onClick: () => {}, // Will be handled by parent
+        onAccept: () => {
+          setRules((prev) => {
+            // Remove all employee chips and add department chip
+            let newRules: RuleGroup = prev.map((rule) => 
+              rule.filter((chip) => !employeeIdsToRemove.has(chip.id))
+            );
+            
+            // Add department chip
+            const deptChip: Chip = {
+              id: `var-dept-${Date.now()}`,
+              label: `Department → ${department}`,
+              type: "variable",
+            };
+            
+            // Clean up empty groups and add department chip to first non-empty group
+            newRules = newRules.filter((g) => g.length > 0);
+            if (newRules.length > 0) {
+              newRules[0] = [...newRules[0], deptChip];
+            } else {
+              newRules.push([deptChip]);
+            }
+            
+            return newRules.filter((g) => g.length > 0);
+          });
         },
+        onReject,
       };
     }
   }
 
   // Group employees by location
   const byLocation = new Map<string, typeof employeeChips>();
-  employeeChips.forEach(({ chip }) => {
+  employeeChips.forEach(({ chip, groupIdx, chipIdx }) => {
     const metadata = EMPLOYEE_METADATA[chip.id];
     if (metadata?.location) {
       if (!byLocation.has(metadata.location)) {
         byLocation.set(metadata.location, []);
       }
-      byLocation.get(metadata.location)!.push({ chip, groupIdx: -1, chipIdx: -1 });
+      byLocation.get(metadata.location)!.push({ chip, groupIdx, chipIdx });
     }
   });
 
@@ -433,27 +489,51 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
     });
 
     if (allEmployeesInLocation.length > 0 && employees.length === allEmployeesInLocation.length) {
+      const employeeIdsToRemove = new Set(employees.map(e => e.chip.id));
+      
       return {
         id: "all-people-location",
         title: "Use location filter instead",
         description: `You've added all people in ${location}. Consider using "Work location → ${location}" instead.`,
-        action: {
-          label: "Learn more",
-          onClick: () => {},
+        onAccept: () => {
+          setRules((prev) => {
+            // Remove all employee chips and add location chip
+            let newRules: RuleGroup = prev.map((rule) => 
+              rule.filter((chip) => !employeeIdsToRemove.has(chip.id))
+            );
+            
+            // Add location chip
+            const locationChip: Chip = {
+              id: `var-location-${Date.now()}`,
+              label: `Work location → ${location}`,
+              type: "variable",
+            };
+            
+            // Clean up empty groups and add location chip to first non-empty group
+            newRules = newRules.filter((g) => g.length > 0);
+            if (newRules.length > 0) {
+              newRules[0] = [...newRules[0], locationChip];
+            } else {
+              newRules.push([locationChip]);
+            }
+            
+            return newRules.filter((g) => g.length > 0);
+          });
         },
+        onReject,
       };
     }
   }
 
   // Group employees by level
   const byLevel = new Map<string, typeof employeeChips>();
-  employeeChips.forEach(({ chip }) => {
+  employeeChips.forEach(({ chip, groupIdx, chipIdx }) => {
     const metadata = EMPLOYEE_METADATA[chip.id];
     if (metadata?.level) {
       if (!byLevel.has(metadata.level)) {
         byLevel.set(metadata.level, []);
       }
-      byLevel.get(metadata.level)!.push({ chip, groupIdx: -1, chipIdx: -1 });
+      byLevel.get(metadata.level)!.push({ chip, groupIdx, chipIdx });
     }
   });
 
@@ -467,14 +547,38 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
     });
 
     if (allEmployeesAtLevel.length > 0 && employees.length === allEmployeesAtLevel.length) {
+      const employeeIdsToRemove = new Set(employees.map(e => e.chip.id));
+      
       return {
         id: "all-people-level",
         title: "Use level filter instead",
         description: `You've added all people at ${level} level. Consider using "Level → ${level}" instead.`,
-        action: {
-          label: "Learn more",
-          onClick: () => {},
+        onAccept: () => {
+          setRules((prev) => {
+            // Remove all employee chips and add level chip
+            let newRules: RuleGroup = prev.map((rule) => 
+              rule.filter((chip) => !employeeIdsToRemove.has(chip.id))
+            );
+            
+            // Add level chip
+            const levelChip: Chip = {
+              id: `var-level-${Date.now()}`,
+              label: `Level → ${level}`,
+              type: "variable",
+            };
+            
+            // Clean up empty groups and add level chip to first non-empty group
+            newRules = newRules.filter((g) => g.length > 0);
+            if (newRules.length > 0) {
+              newRules[0] = [...newRules[0], levelChip];
+            } else {
+              newRules.push([levelChip]);
+            }
+            
+            return newRules.filter((g) => g.length > 0);
+          });
         },
+        onReject,
       };
     }
   }
@@ -483,14 +587,24 @@ function detectAllPeopleInGroup(rules: RuleGroup): Tip | null {
 }
 
 // Get all tips for the current rules
-function getAllTips(rules: RuleGroup): Tip[] {
+function getAllTips(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => RuleGroup) => void, dismissedTips: Set<string>, setDismissedTips: (updater: (prev: Set<string>) => Set<string>) => void): Tip[] {
   const tips: Tip[] = [];
   
-  const similarTip = detectSimilarConditions(rules);
-  if (similarTip) tips.push(similarTip);
+  const createOnReject = (tipId: string) => () => {
+    setDismissedTips((prev) => new Set([...prev, tipId]));
+  };
   
-  const allPeopleTip = detectAllPeopleInGroup(rules);
-  if (allPeopleTip) tips.push(allPeopleTip);
+  const similarTip = detectSimilarConditions(rules, setRules, createOnReject("similar-location"));
+  if (similarTip && !dismissedTips.has(similarTip.id)) tips.push(similarTip);
+  
+  const allPeopleTip = detectAllPeopleInGroup(rules, setRules, createOnReject("all-people-dept"));
+  if (allPeopleTip && !dismissedTips.has(allPeopleTip.id)) {
+    // Update the onReject to use the correct tip ID
+    tips.push({
+      ...allPeopleTip,
+      onReject: createOnReject(allPeopleTip.id),
+    });
+  }
   
   return tips;
 }
@@ -2142,21 +2256,34 @@ const TipsPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; onClose
           </div>
         ) : (
           tips.map((tip) => (
-            <div key={tip.id} className="px-3 py-2 hover:bg-[rgba(0,0,0,0.02)] transition-colors">
+            <div key={tip.id} className="px-3 py-2 hover:bg-[rgba(0,0,0,0.02)] transition-colors border-b last:border-b-0">
               <div className="flex flex-col gap-1">
                 <span className="text-[13px] font-medium leading-[16px] text-[#202022]">{tip.title}</span>
                 <span className="text-[11px] leading-[13px] text-[#6f6f72]">{tip.description}</span>
-                {tip.action && (
+                <div className="flex items-center gap-2 mt-2">
                   <button
                     onClick={() => {
-                      tip.action?.onClick();
+                      tip.onAccept();
                       onClose();
                     }}
-                    className="text-[11px] text-blue-600 hover:text-blue-700 mt-1 text-left"
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
+                    title="Accept and apply"
                   >
-                    {tip.action.label}
+                    <Check className="h-3 w-3" />
+                    Accept
                   </button>
-                )}
+                  <button
+                    onClick={() => {
+                      tip.onReject();
+                      onClose();
+                    }}
+                    className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                    title="Dismiss"
+                  >
+                    <X className="h-3 w-3" />
+                    Dismiss
+                  </button>
+                </div>
               </div>
             </div>
           ))
@@ -2725,7 +2852,8 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   };
 
   const memberCount = useMemo(() => countMembers(rules), [rules]);
-  const tips = useMemo(() => getAllTips(rules), [rules]);
+  const [dismissedTips, setDismissedTips] = useState<Set<string>>(new Set());
+  const tips = useMemo(() => getAllTips(rules, setRules, dismissedTips, setDismissedTips), [rules, dismissedTips]);
 
   return (
     <>
@@ -2751,10 +2879,15 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 setTipsPopoverRect(rect);
                 setTipsPopoverOpen(true);
               }}
-              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors"
+              className="h-8 w-8 flex items-center justify-center rounded-md hover:bg-[rgba(0,0,0,0.05)] transition-colors relative"
               title="Tips"
             >
               <Lightbulb className="h-5 w-5 text-[#202022]" />
+              {tips.length > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+                  <span className="text-[10px] font-semibold text-white">{tips.length}</span>
+                </span>
+              )}
             </button>
             <button 
               onClick={(e) => {
