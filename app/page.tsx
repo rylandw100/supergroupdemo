@@ -392,6 +392,106 @@ function detectSimilarConditions(rules: RuleGroup, setRules: (updater: (prev: Ru
   return null;
 }
 
+// Detect similar department conditions that can be combined
+function detectSimilarDepartmentConditions(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => RuleGroup) => void, onReject: () => void): Tip | null {
+  // Collect all department conditions
+  const departmentConditions: Array<{ chip: Chip; groupIdx: number; chipIdx: number; value: string }> = [];
+  
+  rules.forEach((rule, groupIdx) => {
+    rule.forEach((chip, chipIdx) => {
+      const chipType = getChipType(chip);
+      if (chipType === "department") {
+        // Parse "Department → X" format
+        const arrowMatch = chip.label.match(/Department\s*→\s*(.+)/i);
+        if (arrowMatch) {
+          const value = arrowMatch[1].trim();
+          departmentConditions.push({
+            chip,
+            groupIdx,
+            chipIdx,
+            value,
+          });
+        } else {
+          // Try parsing "Department is any of X" format
+          const parsed = parseChipForEditing(chip);
+          if (parsed && parsed.values && parsed.values.length > 0) {
+            // If it's already a combined chip, skip it
+            if (parsed.values.length === 1) {
+              departmentConditions.push({
+                chip,
+                groupIdx,
+                chipIdx,
+                value: parsed.values[0],
+              });
+            }
+          }
+        }
+      }
+    });
+  });
+
+  // Check if there are multiple department conditions with different values
+  if (departmentConditions.length >= 2) {
+    // Collect all unique values
+    const allValues = new Set<string>();
+    departmentConditions.forEach(c => allValues.add(c.value));
+    
+    // Check if there are multiple different values that could be combined
+    if (allValues.size > 1) {
+      // Check if they're already combined in any single chip
+      const hasCombined = rules.some(rule => 
+        rule.some(chip => {
+          const parsed = parseChipForEditing(chip);
+          return parsed && parsed.values && parsed.values.length > 1 && getChipType(chip) === "department";
+        })
+      );
+      
+      if (!hasCombined) {
+        // Found similar conditions that can be combined
+        const combinedValues = Array.from(allValues).join(", ");
+        const conditionsToRemove = departmentConditions;
+        
+        return {
+          id: "similar-department",
+          title: "Combine similar conditions",
+          description: `You have multiple "Department" conditions. Consider combining them into one: "Department is any of ${combinedValues}"`,
+          onAccept: () => {
+            // Remove all the individual department chips and add a combined one
+            setRules((prev) => {
+              let newRules: RuleGroup = prev.map((rule) => [...rule]);
+              
+              // Remove all department condition chips
+              conditionsToRemove.forEach(({ groupIdx, chipIdx }) => {
+                if (newRules[groupIdx]) {
+                  newRules[groupIdx] = newRules[groupIdx].filter((_, idx) => idx !== chipIdx);
+                }
+              });
+              
+              // Add combined chip as a new group (OR condition)
+              const combinedChip: Chip = {
+                id: `var-dept-combined-${Date.now()}`,
+                label: `Department is any of ${combinedValues}`,
+                type: "variable",
+              };
+              
+              // Clean up empty groups
+              newRules = newRules.filter((g) => g.length > 0);
+              
+              // Add combined chip as new group
+              newRules.push([combinedChip]);
+              
+              return newRules.filter((g) => g.length > 0);
+            });
+          },
+          onReject,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 // Detect if all people in a department/location/level are added individually
 function detectAllPeopleInGroup(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => RuleGroup) => void, onReject: () => void): Tip | null {
   // Collect all employee chips
@@ -439,25 +539,21 @@ function detectAllPeopleInGroup(rules: RuleGroup, setRules: (updater: (prev: Rul
         description: `You've added all people in ${department}. Consider using "Department → ${department}" instead.`,
         onAccept: () => {
           setRules((prev) => {
-            // Remove all employee chips and add department chip
+            // Remove all employee chips
             let newRules: RuleGroup = prev.map((rule) => 
               rule.filter((chip) => !employeeIdsToRemove.has(chip.id))
             );
             
-            // Add department chip
+            // Clean up empty groups
+            newRules = newRules.filter((g) => g.length > 0);
+            
+            // Add department chip as a new group (OR condition)
             const deptChip: Chip = {
               id: `var-dept-${Date.now()}`,
               label: `Department → ${department}`,
               type: "variable",
             };
-            
-            // Clean up empty groups and add department chip to first non-empty group
-            newRules = newRules.filter((g) => g.length > 0);
-            if (newRules.length > 0) {
-              newRules[0] = [...newRules[0], deptChip];
-            } else {
-              newRules.push([deptChip]);
-            }
+            newRules.push([deptChip]);
             
             return newRules.filter((g) => g.length > 0);
           });
@@ -497,25 +593,21 @@ function detectAllPeopleInGroup(rules: RuleGroup, setRules: (updater: (prev: Rul
         description: `You've added all people in ${location}. Consider using "Work location → ${location}" instead.`,
         onAccept: () => {
           setRules((prev) => {
-            // Remove all employee chips and add location chip
+            // Remove all employee chips
             let newRules: RuleGroup = prev.map((rule) => 
               rule.filter((chip) => !employeeIdsToRemove.has(chip.id))
             );
             
-            // Add location chip
+            // Clean up empty groups
+            newRules = newRules.filter((g) => g.length > 0);
+            
+            // Add location chip as a new group (OR condition)
             const locationChip: Chip = {
               id: `var-location-${Date.now()}`,
               label: `Work location → ${location}`,
               type: "variable",
             };
-            
-            // Clean up empty groups and add location chip to first non-empty group
-            newRules = newRules.filter((g) => g.length > 0);
-            if (newRules.length > 0) {
-              newRules[0] = [...newRules[0], locationChip];
-            } else {
-              newRules.push([locationChip]);
-            }
+            newRules.push([locationChip]);
             
             return newRules.filter((g) => g.length > 0);
           });
@@ -555,25 +647,21 @@ function detectAllPeopleInGroup(rules: RuleGroup, setRules: (updater: (prev: Rul
         description: `You've added all people at ${level} level. Consider using "Level → ${level}" instead.`,
         onAccept: () => {
           setRules((prev) => {
-            // Remove all employee chips and add level chip
+            // Remove all employee chips
             let newRules: RuleGroup = prev.map((rule) => 
               rule.filter((chip) => !employeeIdsToRemove.has(chip.id))
             );
             
-            // Add level chip
+            // Clean up empty groups
+            newRules = newRules.filter((g) => g.length > 0);
+            
+            // Add level chip as a new group (OR condition)
             const levelChip: Chip = {
               id: `var-level-${Date.now()}`,
               label: `Level → ${level}`,
               type: "variable",
             };
-            
-            // Clean up empty groups and add level chip to first non-empty group
-            newRules = newRules.filter((g) => g.length > 0);
-            if (newRules.length > 0) {
-              newRules[0] = [...newRules[0], levelChip];
-            } else {
-              newRules.push([levelChip]);
-            }
+            newRules.push([levelChip]);
             
             return newRules.filter((g) => g.length > 0);
           });
@@ -594,8 +682,11 @@ function getAllTips(rules: RuleGroup, setRules: (updater: (prev: RuleGroup) => R
     setDismissedTips((prev) => new Set([...Array.from(prev), tipId]));
   };
   
-  const similarTip = detectSimilarConditions(rules, setRules, createOnReject("similar-location"));
-  if (similarTip && !dismissedTips.has(similarTip.id)) tips.push(similarTip);
+  const similarLocationTip = detectSimilarConditions(rules, setRules, createOnReject("similar-location"));
+  if (similarLocationTip && !dismissedTips.has(similarLocationTip.id)) tips.push(similarLocationTip);
+  
+  const similarDeptTip = detectSimilarDepartmentConditions(rules, setRules, createOnReject("similar-department"));
+  if (similarDeptTip && !dismissedTips.has(similarDeptTip.id)) tips.push(similarDeptTip);
   
   const allPeopleTip = detectAllPeopleInGroup(rules, setRules, createOnReject("all-people-dept"));
   if (allPeopleTip && !dismissedTips.has(allPeopleTip.id)) {
@@ -3658,14 +3749,9 @@ export default function Home() {
           This is a form caption. This subtext should explain the purpose of the form, what it takes for a user to fill it out and what value it provides after filling out.
         </p>
 
-        <Tabs defaultValue="option2" className="mt-8">
-          <TabsList>
-            <TabsTrigger value="option2">Option 2</TabsTrigger>
-          </TabsList>
-          <TabsContent value="option2">
-            <SupergroupComponent isOption2={true} />
-          </TabsContent>
-        </Tabs>
+        <div className="mt-8">
+          <SupergroupComponent isOption2={true} />
+        </div>
       </main>
     </div>
   );
