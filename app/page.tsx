@@ -3050,11 +3050,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 ref={addMemberInputRef}
                 value={addMemberQuery}
                 onClick={(e) => {
-                  // If popover is already open, close it when clicking the input again
+                  // If popover is already open, act as if clicking outside (close popover and deactivate input)
                   if (popover.open) {
                     e.stopPropagation();
                     closePopover();
-                    setAddMemberActive(false);
                   }
                 }}
                 onChange={(e) => {
@@ -3293,6 +3292,13 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                   <input
                     ref={excludeInputRef}
                     value={excludeQuery}
+                    onClick={(e) => {
+                      // If popover is already open, act as if clicking outside (close popover and deactivate input)
+                      if (popover.open) {
+                        e.stopPropagation();
+                        closePopover();
+                      }
+                    }}
                     onChange={(e) => {
                       setExcludeQuery(e.target.value);
                       // Open popover when user starts typing
