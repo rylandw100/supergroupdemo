@@ -2998,9 +2998,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
             // Only activate if clicking directly on the container or empty space, not on chips
             // In Option 2, make the entire container clickable
             if (isOption2) {
-              // Check if click is on a chip or chip-related element
+              // Check if click is on a chip or chip-related element, or on the input itself
               const clickedChip = (e.target as HTMLElement).closest('[data-chip-container]');
-              if (!clickedChip) {
+              const clickedInput = (e.target as HTMLElement) === addMemberInputRef.current || addMemberInputRef.current?.contains(e.target as Node);
+              if (!clickedChip && !clickedInput) {
                 // If popover is already open, close it
                 if (popover.open && !addMemberActive) {
                   closePopover();
@@ -3050,10 +3051,23 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 ref={addMemberInputRef}
                 value={addMemberQuery}
                 onClick={(e) => {
+                  e.stopPropagation(); // Always stop propagation to prevent container click handler
+                  
                   // If popover is already open, act as if clicking outside (close popover and deactivate input)
                   if (popover.open) {
-                    e.stopPropagation();
                     closePopover();
+                  } else {
+                    // If popover is closed, open it
+                    setPendingPopoverTarget({
+                      target: { groupIdx: rules.length, insertAtEnd: true },
+                      currentRule: []
+                    });
+                    setTimeout(() => {
+                      if (addMemberInputRef.current) {
+                        const rect = addMemberInputRef.current.getBoundingClientRect();
+                        openPopover(rect, { groupIdx: rules.length, insertAtEnd: true });
+                      }
+                    }, 0);
                   }
                 }}
                 onChange={(e) => {
@@ -3232,9 +3246,10 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                 // Only activate if clicking directly on the container or empty space, not on chips
                 // In Option 2, make the entire container clickable
                 if (isOption2 && !excludeActive) {
-                  // Check if click is on a chip or chip-related element
+                  // Check if click is on a chip or chip-related element, or on the input itself
                   const clickedChip = (e.target as HTMLElement).closest('[data-exception-chip-container]');
-                  if (!clickedChip) {
+                  const clickedInput = (e.target as HTMLElement) === excludeInputRef.current || excludeInputRef.current?.contains(e.target as Node);
+                  if (!clickedChip && !clickedInput) {
                     setExcludeActive(true);
                     setExcludeQuery("");
                     // Set up pending popover target
@@ -3293,10 +3308,23 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
                     ref={excludeInputRef}
                     value={excludeQuery}
                     onClick={(e) => {
+                      e.stopPropagation(); // Always stop propagation to prevent container click handler
+                      
                       // If popover is already open, act as if clicking outside (close popover and deactivate input)
                       if (popover.open) {
-                        e.stopPropagation();
                         closePopover();
+                      } else {
+                        // If popover is closed, open it
+                        setPendingPopoverTarget({
+                          target: { groupIdx: exceptions.length, insertAtEnd: true },
+                          currentRule: []
+                        });
+                        setTimeout(() => {
+                          if (excludeInputRef.current) {
+                            const rect = excludeInputRef.current.getBoundingClientRect();
+                            openExceptionPopover(rect);
+                          }
+                        }, 0);
                       }
                     }}
                     onChange={(e) => {
