@@ -1207,18 +1207,21 @@ const Popover: React.FC<{
           });
         } else if (e.key === " ") {
           e.preventDefault();
-          const value = values[focusedValueIdx];
-          if (value) {
-            if (selectedAttr.kind === 'department') {
-              setDeptValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
-            } else if (selectedAttr.kind === 'location') {
-              setLocationValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
-            } else if (selectedAttr.kind === 'level') {
-              setLevelValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
-            } else if (selectedAttr.kind === 'team') {
-              setTeamValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+          setFocusedValueIdx((currentIdx) => {
+            const value = values[currentIdx];
+            if (value) {
+              if (selectedAttr.kind === 'department') {
+                setDeptValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+              } else if (selectedAttr.kind === 'location') {
+                setLocationValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+              } else if (selectedAttr.kind === 'level') {
+                setLevelValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+              } else if (selectedAttr.kind === 'team') {
+                setTeamValues((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+              }
             }
-          }
+            return currentIdx; // Keep the same focus index
+          });
         } else if (e.key === "Enter") {
           e.preventDefault();
           if (isFormValid) {
@@ -3046,6 +3049,14 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
               <input
                 ref={addMemberInputRef}
                 value={addMemberQuery}
+                onClick={(e) => {
+                  // If popover is already open, close it when clicking the input again
+                  if (popover.open) {
+                    e.stopPropagation();
+                    closePopover();
+                    setAddMemberActive(false);
+                  }
+                }}
                 onChange={(e) => {
                   setAddMemberQuery(e.target.value);
                   // Open popover when user starts typing
