@@ -2355,7 +2355,6 @@ const TipsPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; onClose
                   <button
                     onClick={() => {
                       tip.onAccept();
-                      onClose();
                     }}
                     className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-green-50 text-green-700 hover:bg-green-100 transition-colors"
                     title="Accept and apply"
@@ -2366,7 +2365,6 @@ const TipsPopover: React.FC<{ open: boolean; anchorRect: DOMRect | null; onClose
                   <button
                     onClick={() => {
                       tip.onReject();
-                      onClose();
                     }}
                     className="flex items-center gap-1 px-2 py-1 rounded text-[11px] bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
                     title="Dismiss"
@@ -2391,10 +2389,6 @@ const SupergroupComponent: React.FC<{ isOption2?: boolean }> = ({ isOption2 = fa
   const [rules, setRules] = useState<RuleGroup>([
     [{ id: "var-1", label: "Department → Product Design", type: "variable" }],
     [{ id: "var-2", label: "Work location is any of San Francisco", type: "variable" }],
-    [
-      { id: "var-3", label: "Department → Engineering", type: "variable" },
-      { id: "var-4", label: "Level → Manager", type: "variable" },
-    ],
   ]);
 
   const [exceptions, setExceptions] = useState<RuleGroup>([]);
